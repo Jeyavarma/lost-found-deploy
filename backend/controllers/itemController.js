@@ -20,15 +20,36 @@ exports.createItem = async (req, res) => {
   }
 };
 
-// @desc    Get all items
+// @desc    Get all items with pagination
 // @route   GET /api/items
 // @access  Public
 exports.getAllItems = async (req, res) => {
   try {
-    const items = await db.Item.findAll({
-      include: [{ model: db.User, attributes: ['name', 'email'] }]
+    const { page = 1, limit = 20, status, category } = req.query;
+    const offset = (page - 1) * Math.min(limit, 50); // Max 50 items per page
+    const actualLimit = Math.min(limit, 50);
+    
+    const where = {};
+    if (status) where.status = status;
+    if (category && category !== 'All Categories') where.category = category;
+    
+    const { count, rows: items } = await db.Item.findAndCountAll({
+      where,
+      include: [{ model: db.User, attributes: ['name', 'email'] }],
+      order: [['createdAt', 'DESC']],
+      limit: actualLimit,
+      offset: offset
     });
-    res.status(200).json(items);
+    
+    res.status(200).json({
+      items,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / actualLimit),
+        totalItems: count,
+        itemsPerPage: actualLimit
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error fetching items.', error: error.message });
   }
@@ -79,6 +100,23 @@ exports.updateItem = async (req, res) => {
 // @desc    Delete an item
 // @route   DELETE /api/items/:id
 // @access  Private
+// @desc    Get recent items (optimized for homepage)
+// @route   GET /api/items/recent
+// @access  Public
+exports.getRecentItems = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 20);
+    const items = await db.Item.findAll({
+      include: [{ model: db.User, attributes: ['name', 'email'] }],
+      order: [['createdAt', 'DESC']],
+      limit: limit
+    });
+    res.status(200).json(items);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error fetching recent items.', error: error.message });
+  }
+};
+
 // @desc    Get items for the logged-in user
 // @route   GET /api/items/my-items
 // @access  Private

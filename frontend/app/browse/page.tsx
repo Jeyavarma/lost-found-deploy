@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import {
   Search,
@@ -82,6 +81,11 @@ export default function BrowsePage() {
   const [selectedItem, setSelectedItem] = useState<any>(null)
   const [authenticated, setAuthenticated] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const itemsPerPage = 20
 
   useEffect(() => {
     // Check authentication
@@ -104,50 +108,109 @@ export default function BrowsePage() {
       setCategoryFilter(categoryParam)
     }
     
-    const fetchItems = async () => {
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/items`)
-        if (response.ok) {
-          const data = await response.json()
-          setAllItems(data)
-        }
-      } catch (error) {
-        console.error('Error fetching items:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchItems()
+    fetchItems(1, true) // Load first page
   }, [])
 
-  const filteredItems = allItems.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase())
+  // Debounced search to avoid excessive API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.length > 2 || searchQuery.length === 0) {
+        setCurrentPage(1)
+        fetchItems(1, true)
+      }
+    }, 500) // 500ms delay
+    
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery])
 
-    const matchesCategory = categoryFilter === "All Categories" || 
-      (item.category && item.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim()) ||
-      (!item.category && categoryFilter === "Other")
-    const matchesType = typeFilter === "All" || item.status === typeFilter
-    const matchesBuilding = buildingFilter === "All Buildings" || 
-      (item.location && item.location.toLowerCase().includes(buildingFilter.toLowerCase()))
-    const matchesEvent = eventFilter === "All Events" || 
-      (item.eventName && item.eventName === eventFilter)
-
-    return matchesSearch && matchesCategory && matchesType && matchesBuilding && matchesEvent
-  })
-
-  const sortedItems = [...filteredItems].sort((a, b) => {
-    switch (sortBy) {
-      case "newest":
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      case "oldest":
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      default:
-        return 0
+  // Fetch items when filters change
+  useEffect(() => {
+    if (!loading) { // Don't trigger on initial load
+      setCurrentPage(1)
+      fetchItems(1, true)
     }
-  })
+  }, [categoryFilter, typeFilter])
+
+  const fetchItems = useCallback(async (page = 1, reset = false) => {
+    try {
+      if (page === 1) setLoading(true)
+      else setLoadingMore(true)
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: itemsPerPage.toString()
+      })
+      
+      if (categoryFilter !== 'All Categories') {
+        params.append('category', categoryFilter)
+      }
+      if (typeFilter !== 'All') {
+        params.append('status', typeFilter)
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/items?${params}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (reset || page === 1) {
+          setAllItems(data.items || [])
+        } else {
+          setAllItems(prev => [...prev, ...(data.items || [])])
+        }
+        
+        if (data.pagination) {
+          setCurrentPage(data.pagination.currentPage)
+          setTotalPages(data.pagination.totalPages)
+          setTotalItems(data.pagination.totalItems)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching items:', error)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [categoryFilter, typeFilter, itemsPerPage])
+
+  const loadMoreItems = () => {
+    if (currentPage < totalPages && !loadingMore) {
+      fetchItems(currentPage + 1, false)
+    }
+  }
+
+  const filteredItems = useMemo(() => {
+    return allItems.filter((item) => {
+      const matchesSearch =
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.location.toLowerCase().includes(searchQuery.toLowerCase())
+
+      const matchesCategory = categoryFilter === "All Categories" || 
+        (item.category && item.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim()) ||
+        (!item.category && categoryFilter === "Other")
+      const matchesType = typeFilter === "All" || item.status === typeFilter
+      const matchesBuilding = buildingFilter === "All Buildings" || 
+        (item.location && item.location.toLowerCase().includes(buildingFilter.toLowerCase()))
+      const matchesEvent = eventFilter === "All Events" || 
+        (item.eventName && item.eventName === eventFilter)
+
+      return matchesSearch && matchesCategory && matchesType && matchesBuilding && matchesEvent
+    })
+  }, [allItems, searchQuery, categoryFilter, typeFilter, buildingFilter, eventFilter])
+
+  const sortedItems = useMemo(() => {
+    return [...filteredItems].sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        case "oldest":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        default:
+          return 0
+      }
+    })
+  }, [filteredItems, sortBy])
 
   const handleLike = (itemId: string) => {
     setLikedItems((prev) => {
@@ -167,34 +230,10 @@ export default function BrowsePage() {
       return
     }
     
-    try {
-      const token = getAuthToken()
-      const response = await fetch(`${BACKEND_URL}/api/chat/room/${item._id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (response.ok) {
-        const room = await response.json()
-        setSelectedItem(null)
-        
-        // Dispatch event to open floating chat
-        window.dispatchEvent(new CustomEvent('openChat', { 
-          detail: { roomId: room._id, room } 
-        }))
-        
-        alert('Chat started! Check the chat window.')
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        alert(errorData.error || 'Failed to start conversation')
-      }
-    } catch (error) {
-      console.error('Failed to start chat:', error)
-      alert('Network error. Please try again.')
-    }
+    // Simple contact info display instead of complex chat
+    const contactInfo = item.contactInfo || 'No contact information available'
+    alert(`Contact Information:\n${contactInfo}\n\nYou can reach out to the person who reported this item.`)
+    setSelectedItem(null)
   }
 
   const getUrgencyColor = (urgency: string) => {
@@ -378,8 +417,13 @@ export default function BrowsePage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-0">
               <div>
                 <p className="text-sm sm:text-base text-brand-text-dark">
-                  Showing <span className="font-semibold mcc-text-primary">{sortedItems.length}</span> of{" "}
-                  <span className="font-semibold mcc-text-primary">{allItems.length}</span> items
+                  Showing <span className="font-semibold mcc-text-primary">{allItems.length}</span> of{" "}
+                  <span className="font-semibold mcc-text-primary">{totalItems}</span> items
+                  {totalPages > 1 && (
+                    <span className="text-xs text-gray-500 ml-2">
+                      (Page {currentPage} of {totalPages})
+                    </span>
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -573,7 +617,20 @@ export default function BrowsePage() {
               </div>
             )}
 
-            {sortedItems.length === 0 && (
+            {/* Load More Button */}
+            {currentPage < totalPages && (
+              <div className="text-center mt-8">
+                <Button
+                  onClick={loadMoreItems}
+                  disabled={loadingMore}
+                  className="mcc-primary text-white px-8 py-2"
+                >
+                  {loadingMore ? 'Loading...' : `Load More Items (${totalItems - allItems.length} remaining)`}
+                </Button>
+              </div>
+            )}
+
+            {sortedItems.length === 0 && !loading && (
               <div className="text-center py-16">
                 <div className="w-32 h-32 mcc-primary rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
                   <Search className="w-16 h-16 text-brand-text-light" />
@@ -607,7 +664,7 @@ export default function BrowsePage() {
         onStartChat={handleStartChat}
       />
       
-      <EnhancedFloatingChat />
+      {/* <EnhancedFloatingChat /> */}
     </div>
   )
 }

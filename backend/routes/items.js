@@ -16,19 +16,35 @@ console.log('✅ Using text-based matching for item suggestions');
 router.get('/', trackActivity('search'), async (req, res) => {
   try {
     const { page = 1, limit = 20, status, category } = req.query;
+    const actualLimit = Math.min(parseInt(limit), 50); // Max 50 items per page
+    const skip = (parseInt(page) - 1) * actualLimit;
+    
     const filter = {};
+    if (status && status !== 'All') filter.status = status;
+    if (category && category !== 'All Categories') filter.category = category;
     
-    if (status) filter.status = status;
-    if (category) filter.category = category;
+    // Get total count for pagination
+    const totalItems = await Item.countDocuments(filter);
     
-    const query = Item.find(filter)
+    // Get paginated items
+    const items = await Item.find(filter)
       .populate('reportedBy', 'name email')
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(actualLimit)
       .lean();
     
-    const items = await req.paginate(query, parseInt(page), parseInt(limit));
-    res.json(items);
+    res.json({
+      items,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalItems / actualLimit),
+        totalItems,
+        itemsPerPage: actualLimit
+      }
+    });
   } catch (error) {
+    console.error('Error fetching items:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

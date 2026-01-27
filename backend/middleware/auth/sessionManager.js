@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const config = require('../config/environment');
+const config = require('../../config/environment');
 
 // Session management utilities
 class SessionManager {

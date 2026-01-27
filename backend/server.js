@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const http = require('http');
 const socketIo = require('socket.io');
 const config = require('./config/environment');
@@ -41,6 +42,9 @@ const io = socketIo(server, {
 
 // Trust proxy for rate limiting on Render
 app.set('trust proxy', 1);
+
+// Compression middleware
+app.use(compression());
 
 // Performance and monitoring middleware
 app.use(requestTracker);
@@ -165,6 +169,7 @@ app.post('/api/auth/create-first-admin', express.json(), async (req, res) => {
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/items', apiLimiter, itemRoutes);
+app.use('/api/homepage', cacheMiddleware(30000), require('./routes/homepage')); // 30 second cache
 app.use('/api/claims', apiLimiter, require('./routes/claims'));
 app.use('/api/ai', apiLimiter, require('./routes/ai-search'));
 app.use('/api/notifications', apiLimiter, notificationRoutes);
@@ -176,7 +181,7 @@ app.use('/api/moderation', apiLimiter, require('./routes/moderation'));
 app.use('/api/messaging', apiLimiter, require('./routes/messaging'));
 app.use('/api/system-flow', apiLimiter, require('./routes/system-flow'));
 app.use('/api/visual-ai', apiLimiter, require('./routes/visual-ai'));
-app.use('/api/chat', require('./middleware/security').chatLimiter, require('./routes/chat'));
+app.use('/api/chat', chatLimiter, require('./routes/chat'));
 app.use('/api/presence', apiLimiter, require('./routes/presence'));
 
 // MongoDB-based chat persistence is now handled automatically
@@ -213,14 +218,10 @@ app.get('/uploads/*', (req, res) => {
   res.status(404).json({ error: 'Image not found' });
 });
 
-// Chat routes using MongoDB persistence
-const authMiddleware = require('./middleware/authMiddleware');
+// User search endpoint
+const authMiddleware = require('./middleware/auth/authMiddleware');
 const User = require('./models/User');
 
-// Use dedicated chat routes
-app.use('/api/chat', chatLimiter, require('./routes/chat-simple'));
-
-// User search endpoint
 app.get('/api/users/search', authMiddleware, async (req, res) => {
   try {
     const { q } = req.query;

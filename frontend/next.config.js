@@ -2,9 +2,15 @@
 const nextConfig = {
   images: {
     domains: ['res.cloudinary.com'],
+    formats: ['image/webp', 'image/avif'],
   },
+  compress: true,
+  poweredByHeader: false,
+  generateEtags: false,
+  swcMinify: true,
   experimental: {
-    optimizePackageImports: ['@tensorflow/tfjs', '@tensorflow-models/mobilenet']
+    optimizePackageImports: ['@tensorflow/tfjs', '@tensorflow-models/mobilenet'],
+    optimizeCss: true,
   },
   webpack: (config, { isServer }) => {
     // Optimize TensorFlow.js bundle
