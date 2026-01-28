@@ -13,7 +13,6 @@ const nextConfig = {
   poweredByHeader: false,
   generateEtags: false,
   experimental: {},
-  turbopack: {},
   async rewrites() {
     return [
       {
