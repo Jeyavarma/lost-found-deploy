@@ -16,12 +16,12 @@ const notificationRoutes = require('./routes/notifications');
 const feedbackRoutes = require('./routes/feedback');
 const healthRoutes = require('./routes/health');
 const adminRoutes = require('./routes/admin');
-const { authLimiter, apiLimiter, chatLimiter, passwordResetLimiter, adminLimiter, securityHeaders, csrfProtection } = require('./middleware/security');
+const { authLimiter, apiLimiter, chatLimiter, passwordResetLimiter, adminLimiter, securityHeaders, csrfProtection } = require('./middleware/security/security');
 const requestTracker = require('./middleware/requestTracker');
 const { apiVersioning } = require('./middleware/apiVersioning');
 const queryOptimizer = require('./middleware/queryOptimizer');
-const memoryMonitor = require('./middleware/memoryMonitor');
-const performanceMonitor = require('./middleware/performanceMonitor');
+const memoryMonitor = require('./middleware/monitoring/memoryMonitor');
+const performanceMonitor = require('./middleware/monitoring/performanceMonitor');
 const gracefulShutdown = require('./middleware/gracefulShutdown');
 const { cacheMiddleware } = require('./middleware/simpleCache');
 

@@ -1,4 +1,4 @@
-const UserActivity = require('../models/UserActivity')
+const UserActivity = require('../../models/UserActivity')
 
 const trackActivity = (action) => {
   return async (req, res, next) => {
