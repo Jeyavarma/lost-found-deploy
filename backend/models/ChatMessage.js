@@ -26,10 +26,7 @@ const chatMessageSchema = new mongoose.Schema({
     enum: ['text', 'image', 'system'],
     default: 'text'
   },
-  clientMessageId: {
-    type: String,
-    index: true
-  },
+  clientMessageId: String,
   deliveryStatus: {
     type: String,
     enum: ['sent', 'delivered', 'read'],
@@ -52,5 +49,6 @@ const chatMessageSchema = new mongoose.Schema({
 // Index for efficient queries
 chatMessageSchema.index({ roomId: 1, createdAt: -1 });
 chatMessageSchema.index({ 'senderId._id': 1 });
+chatMessageSchema.index({ clientMessageId: 1 });
 
 module.exports = mongoose.model('ChatMessage', chatMessageSchema);
