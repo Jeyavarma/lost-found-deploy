@@ -15,7 +15,7 @@ docker-compose up -d
 ### Option 3: MongoDB Atlas (Cloud)
 Update .env with Atlas connection string:
 ```
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/mcc-lost-found
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/your-database-name
 ```
 
 ## Database Setup
