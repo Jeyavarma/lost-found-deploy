@@ -87,14 +87,18 @@ export default function HomePage() {
         
         if (itemsResponse.ok) {
           const itemsData = await itemsResponse.json()
-          console.log('✅ All items loaded:', itemsData.length, 'items')
-          setAllItems(itemsData)
+          // Handle both array and object responses
+          const items = Array.isArray(itemsData) ? itemsData : (itemsData.items || itemsData.data || [])
+          console.log('✅ All items loaded:', items.length, 'items')
+          setAllItems(items)
         }
         
         if (recentResponse.ok) {
           const recentData = await recentResponse.json()
-          console.log('✅ Recent items loaded:', recentData.length, 'items')
-          setRecentItems(recentData)
+          // Handle both array and object responses
+          const recentItems = Array.isArray(recentData) ? recentData : (recentData.items || recentData.data || [])
+          console.log('✅ Recent items loaded:', recentItems.length, 'items')
+          setRecentItems(recentItems)
         }
       } catch (error) {
         console.error('❌ Error fetching items:', error)
@@ -107,15 +111,15 @@ export default function HomePage() {
     fetchItems()
   }, [])
 
-  const filteredItems = allItems.filter((item) => {
+  const filteredItems = Array.isArray(allItems) ? allItems.filter((item) => {
     const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return matchesSearch
-  })
+  }) : []
 
   const handleLike = (itemId: string) => {
     setLikedItems((prev) => {

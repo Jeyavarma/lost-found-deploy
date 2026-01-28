@@ -45,7 +45,9 @@ export default function EventHighlights() {
     try {
       const response = await fetch(`${BACKEND_URL}/api/items`)
       if (response.ok) {
-        const items = await response.json()
+        const itemsResponse = await response.json()
+        // Handle both array and object responses
+        const items = Array.isArray(itemsResponse) ? itemsResponse : (itemsResponse.items || itemsResponse.data || [])
         
         // Group items by event-related keywords and create event data
         const eventGroups: { [key: string]: any[] } = {}
