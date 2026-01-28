@@ -14,7 +14,6 @@ const nextConfig = {
   generateEtags: false,
   experimental: {
     optimizePackageImports: ['@tensorflow/tfjs', '@tensorflow-models/mobilenet'],
-    optimizeCss: true,
   },
   turbopack: {},
   async rewrites() {
