@@ -10,7 +10,13 @@ import {
 } from "lucide-react"
 import Navigation from "@/components/layout/navigation"
 
+
+
+
+
 export default function HomePage() {
+  const searchQuery = ""
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
@@ -18,16 +24,18 @@ export default function HomePage() {
       {/* MCC Brand Hero Section */}
       <div className="mcc-primary text-brand-text-light relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
+        {/* Brand accent stripe */}
         <div className="absolute top-0 left-0 w-full h-1 mcc-accent"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-24 relative">
           <div className="text-center">
+
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 animate-fade-in font-serif">Lost Something? Found Something?</h1>
             <p className="text-lg sm:text-xl mb-2 opacity-95 font-medium">Madras Christian College Community Portal</p>
             <p className="text-base sm:text-lg mb-6 sm:mb-8 opacity-80">
               Connect with your campus community to reunite with lost belongings
             </p>
 
-            {/* Enhanced Search Bar */}
+            {/* Enhanced Search Bar with Filters */}
             <div className="max-w-4xl mx-auto relative">
               <div className="bg-white rounded-xl p-2 shadow-2xl">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-0">
@@ -36,6 +44,8 @@ export default function HomePage() {
                     <Input
                       type="text"
                       placeholder="Search for textbooks, electronics, ID cards..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       className="flex-1 border-0 bg-transparent text-sm sm:text-lg text-brand-text-dark placeholder:text-gray-500 focus:ring-0 px-3 sm:px-4 py-3 sm:py-4"
                     />
                   </div>
@@ -43,6 +53,7 @@ export default function HomePage() {
                     <Button 
                       size="default" 
                       className="mcc-accent hover:bg-red-700 text-white shadow-lg w-full sm:w-auto"
+                      onClick={() => window.location.href = `/browse?search=${encodeURIComponent(searchQuery)}`}
                     >
                       <Zap className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                       Search
@@ -60,6 +71,7 @@ export default function HomePage() {
                   variant="outline"
                   size="sm"
                   className="bg-white/20 border-white/40 text-brand-text-light hover:bg-white/30 rounded-full font-medium backdrop-blur-sm text-xs sm:text-sm"
+                  onClick={() => window.location.href = `/browse?category=${encodeURIComponent(tag)}`}
                 >
                   {tag}
                 </Button>
@@ -111,38 +123,141 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* MCC Campus Map */}
         <div className="mb-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
-              <div className="text-2xl font-bold text-green-600 mb-2">Report Lost Item</div>
-              <p className="text-gray-600 mb-4">Lost something on campus? Report it here.</p>
-              <Link href="/report-lost">
-                <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
-                  Report Lost
-                </Button>
-              </Link>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
-              <div className="text-2xl font-bold text-blue-600 mb-2">Browse Items</div>
-              <p className="text-gray-600 mb-4">Search through found items on campus.</p>
-              <Link href="/browse">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                  Browse Items
-                </Button>
-              </Link>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
-              <div className="text-2xl font-bold text-green-600 mb-2">Report Found</div>
-              <p className="text-gray-600 mb-4">Found something? Help return it to owner.</p>
-              <Link href="/report-found">
-                <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
-                  Report Found
-                </Button>
-              </Link>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-bold mcc-text-primary font-serif">Campus Map & Navigation</h2>
+              <p className="text-brand-text-dark">Interactive map of MCC buildings and locations</p>
             </div>
           </div>
+          <MccCampusMap />
         </div>
+
+        {/* Event Highlights */}
+        <EventHighlights />
+
+        {/* Live Activity Feed */}
+        <div className="mb-12">
+          <LiveActivity />
+        </div>
+
+
+
+        {/* Browse Items */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-4xl font-bold mb-3 mcc-text-primary font-serif">Browse Items</h2>
+            <p className="text-brand-text-dark text-lg">Help your fellow MCC students find their belongings</p>
+          </div>
+          <Link href="/browse">
+            <Button size="lg" className="mcc-accent hover:bg-red-700 text-white px-8 py-3">
+              View All Items
+            </Button>
+          </Link>
+        </div>
+
+        {loadingItems ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <div className="h-52 bg-gray-200 rounded-t-lg"></div>
+                <CardContent className="p-6">
+                  <div className="h-4 bg-gray-200 rounded mb-3"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {filteredItems.slice(0, 4).map((item) => (
+              <Card
+                key={item._id}
+                className="mcc-card hover:shadow-2xl transition-all duration-500 group cursor-pointer overflow-hidden border-2 border-gray-200"
+              >
+                <div className="relative">
+                  <ImageWithFallback
+                    src={item.itemImageUrl || item.imageUrl}
+                    alt={item.title}
+                    className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500"
+                    fallbackText="No Image"
+                  />
+                  <div className="absolute top-3 right-3 flex gap-2">
+                    <Badge
+                      variant={item.status === "lost" ? "destructive" : "default"}
+                      className={`shadow-lg font-medium ${
+                        item.status === "lost" ? "bg-red-500" : "bg-green-500"
+                      } text-white`}
+                    >
+                      {item.status === "lost" ? "Lost" : "Found"}
+                    </Badge>
+                  </div>
+                </div>
+
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <Badge variant="outline" className="text-xs font-medium border-brand-primary/30 mcc-text-primary">
+                      {item.category}
+                    </Badge>
+                    <span className="text-xs text-gray-500 font-medium">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <CardTitle className="text-lg mb-3 group-hover:text-brand-primary transition-colors cursor-pointer font-serif">
+                    {item.title}
+                  </CardTitle>
+                  <CardDescription className="mb-4 line-clamp-2 text-brand-text-dark">
+                    {item.description}
+                  </CardDescription>
+
+                  <div className="space-y-2 text-sm text-brand-text-dark mb-5">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 mcc-text-primary" />
+                      <span className="truncate font-medium">{item.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-yellow-600" />
+                      <span className="font-medium">{item.reportedBy?.name || 'Anonymous'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-yellow-600" />
+                      <span className="truncate font-medium">{item.reportedBy?.email || item.contactEmail}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleLike(item._id)}
+                        className={`flex items-center gap-1 hover:bg-red-50 ${
+                          likedItems.has(item._id) ? "text-red-500" : "text-gray-500"
+                        }`}
+                      >
+                        <Heart className={`w-4 h-4 ${likedItems.has(item._id) ? "fill-current" : ""}`} />
+                        <span className="font-medium">{likedItems.has(item._id) ? 1 : 0}</span>
+                      </Button>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="mcc-accent hover:bg-red-700 text-white shadow-md font-medium"
+                      onClick={() => setSelectedItem(item)}
+                    >
+                      <MessageCircle className="w-4 h-4 mr-1" />
+                      Contact
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+
       </div>
       
       {/* Footer */}
@@ -163,6 +278,13 @@ export default function HomePage() {
                 Connecting the MCC community to reunite students with their lost belongings. 
                 A digital platform built for Madras Christian College students, by students.
               </p>
+              <div className="flex space-x-4">
+                <div className="text-sm">
+                  <span className="font-semibold">📧 Contact:</span>
+                  <br />
+                  <span className="text-gray-300">lostfound@mcc.edu.in</span>
+                </div>
+              </div>
             </div>
             
             <div>
@@ -178,9 +300,9 @@ export default function HomePage() {
             <div>
               <h4 className="font-semibold mb-4">Campus Info</h4>
               <ul className="space-y-2 text-sm text-gray-300">
-                <li>📍 East Tambaram, Chennai</li>
+                <li><a href="https://maps.google.com/?q=Madras+Christian+College,+East+Tambaram,+Chennai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors cursor-pointer">📍 East Tambaram, Chennai</a></li>
                 <li>📞 044-2271 5566</li>
-                <li>🌐 www.mcc.edu.in</li>
+                <li><a href="https://www.mcc.edu.in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors cursor-pointer">🌐 www.mcc.edu.in</a></li>
                 <li>🕒 24/7 Lost & Found Service</li>
               </ul>
             </div>
@@ -200,6 +322,15 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+      
+      <ItemDetailModal
+        item={selectedItem}
+        isOpen={!!selectedItem}
+        onClose={() => setSelectedItem(null)}
+        onStartChat={handleStartChat}
+      />
+      
+      <EnhancedFloatingChat />
     </div>
   )
 }
