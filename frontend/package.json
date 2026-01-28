@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "next build --webpack",
+    "build": "next build && next export",
     "dev": "REACT_EDITOR=code next dev -p 3002",
     "lint": "next lint",
     "start": "next start",
