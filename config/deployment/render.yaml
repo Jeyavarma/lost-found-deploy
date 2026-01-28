@@ -1,0 +1,30 @@
+# Render.com deployment configuration
+services:
+  - type: web
+    name: mcc-lost-found-backend
+    env: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build || echo "No build script found"
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        # Set in Render dashboard - DO NOT hardcode
+        fromGroup: secrets
+      - key: JWT_SECRET
+        # Generate 32+ char secret in Render dashboard
+        fromGroup: secrets
+      - key: PORT
+        value: 10000
+      - key: CLOUDINARY_CLOUD_NAME
+        fromGroup: secrets
+      - key: CLOUDINARY_API_KEY
+        fromGroup: secrets
+      - key: CLOUDINARY_API_SECRET
+        fromGroup: secrets
+      - key: FRONTEND_URL
+        value: "https://lost-found-mcc.vercel.app"

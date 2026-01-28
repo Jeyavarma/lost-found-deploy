@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom responsive breakpoints for extra small screens */
+@media (min-width: 475px) {
+  .xs\:w-10 { width: 2.5rem; }
+  .xs\:h-10 { height: 2.5rem; }
+  .xs\:w-5 { width: 1.25rem; }
+  .xs\:h-5 { height: 1.25rem; }
+  .xs\:w-6 { width: 1.5rem; }
+  .xs\:h-6 { height: 1.5rem; }
+  .xs\:text-base { font-size: 1rem; line-height: 1.5rem; }
+  .xs\:h-16 { height: 4rem; }
+  .xs\:block { display: block; }
+}
+
+/* MCC Brand Colors */
+:root {
+  --brand-primary: #1c1b3b;
+  --brand-accent: #dc2626bc;
+  --brand-text-dark: #374151;
+  --brand-text-light: #F9FAFB;
+  
+  /* Ensure all backgrounds are solid white */
+  --background: #ffffff;
+  --popover: #ffffff;
+  --card: #ffffff;
+  --muted: #f9fafb;
+  
+  /* Consistent color palette */
+  --red-600: #dc2626b4;
+  --green-600: #16a34a;
+  --blue-600: #2563eb;
+  --purple-600: #9333ea;
+  --orange-600: #ea580c;
+  --indigo-600: #4f46e5;
+  --gray-600: #4b5563;
+  --gray-800: #1f2937;
+}
+
+/* Force consistent button colors across environments */
+.bg-red-500, .bg-red-600, .bg-red-700, .bg-red-800,
+.bg-green-500, .bg-green-600, .bg-green-700, .bg-green-800,
+.bg-blue-500, .bg-blue-600, .bg-blue-700, .bg-blue-800,
+.bg-purple-500, .bg-purple-600, .bg-purple-700, .bg-purple-800,
+.bg-orange-500, .bg-orange-600, .bg-orange-700, .bg-orange-800,
+.bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-indigo-800,
+.bg-gray-800, .bg-gray-900 {
+  color: white !important;
+  border: none !important;
+}
+
+/* Hover states */
+.bg-red-600:hover { background-color: #dc2626b5 !important; }
+.bg-green-600:hover { background-color: #16a34a !important; }
+.bg-blue-600:hover { background-color: #2563eb !important; }
+.bg-purple-600:hover { background-color: #9333ea !important; }
+.bg-orange-600:hover { background-color: #ea580c !important; }
+.bg-indigo-600:hover { background-color: #4f46e5 !important; }
+.bg-gray-800:hover { background-color: #1f2937 !important; }
+
+/* Force white text on mcc-accent */
+.mcc-accent {
+  color: white !important;
+}
+
+/* Consistent text colors */
+.text-blue-600 { color: #2563eb !important; }
+.text-green-600 { color: #16a34a !important; }
+.text-red-600 { color: #dc2626bd !important; }
+.text-purple-600 { color: #9333ea !important; }
+.text-orange-600 { color: #ca1919d3 !important; }
+.text-gray-600 { color: #4b5563 !important; }
+
+.mcc-primary {
+  background-color: var(--brand-primary);
+}
+
+.mcc-accent {
+  background-color: var(--brand-accent);
+  color: white !important;
+}
+
+.mcc-text-primary {
+  color: var(--brand-primary);
+}
+
+.mcc-text-accent {
+  color: var(--brand-accent);
+}
+
+.text-brand-text-dark {
+  color: var(--brand-text-dark);
+}
+
+.text-brand-text-light {
+  color: var(--brand-text-light);
+}
+
+.border-brand-primary {
+  border-color: var(--brand-primary);
+}
+
+.border-brand-accent {
+  border-color: var(--brand-accent);
+}
+
+.mcc-card {
+  transition: all 0.3s ease;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.mcc-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Force solid backgrounds for admin panels */
+.bg-gray-50 {
+  background-color: #f9fafb !important;
+}
+
+.bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Remove any transparency from cards and panels */
+.card, .dialog-content, .popover-content {
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+}
+
+/* Fix dialog/modal transparency */
+[data-radix-dialog-content] {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Dialog overlay */
+[data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* All modal/dialog content */
+.fixed.inset-0 > div {
+  background-color: #ffffff !important;
+}
+
+/* Specific dialog content styling */
+div[role="dialog"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Ensure all admin backgrounds are solid */
+body {
+  background-color: #f9fafb !important;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+
+/* Mobile-first responsive design improvements */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Ensure text doesn't overflow on small screens */
+  .text-responsive {
+    word-break: break-word;
+    hyphens: auto;
+  }
+  
+  /* Better touch targets for mobile */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Very small screens (< 375px) */
+@media (max-width: 374px) {
+  .text-xs-mobile {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  
+  .p-xs-mobile {
+    padding: 0.5rem;
+  }
+  
+  .gap-xs-mobile {
+    gap: 0.25rem;
+  }
+}

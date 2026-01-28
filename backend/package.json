@@ -1,0 +1,45 @@
+{
+  "name": "@mcc/lost-found-backend",
+  "version": "1.0.0",
+  "description": "Backend for MCC Lost & Found application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed": "node scripts/seedData.js",
+    "seed-prod": "node seed-production.js",
+    "test": "node test-auth.js",
+    "autotest": "node auto-test.js",
+    "add-indexes": "node scripts/createIndexes.js",
+    "security-audit": "node scripts/security-audit.js",
+    "security-fix": "npm audit fix && npm update",
+    "performance-test": "node scripts/performance-test.js",
+    "optimize": "npm run security-audit && npm run add-indexes"
+  },
+  "dependencies": {
+    "axios": "^1.12.2",
+    "bcryptjs": "^2.4.3",
+    "canvas": "^3.2.0",
+    "cloudinary": "^2.8.0",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "csrf": "^3.1.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "multer": "^1.4.5-lts.1",
+    "multer-storage-cloudinary": "^2.2.1",
+    "nodemailer": "^7.0.9",
+    "redis": "^4.7.1",
+    "sharp": "^0.33.5",
+    "socket.io": "^4.8.1",
+    "validator": "^13.15.15"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
