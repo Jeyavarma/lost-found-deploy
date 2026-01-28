@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build --webpack",
     "dev": "REACT_EDITOR=code next dev -p 3002",
     "lint": "next lint",
     "start": "next start",
     "setup": "npm install --legacy-peer-deps && cd backend && npm install && cd ..",
     "seed": "cd backend && npm run seed && cd ..",
     "dev:full": "./start-dev.sh",
-    "vercel-build": "next build",
+    "vercel-build": "next build --webpack",
     "deploy": "vercel --prod"
   },
   "dependencies": {

@@ -14,6 +14,7 @@ const VirtualizedList = memo(({ items, height, itemHeight, renderItem }: Virtual
   return (
     <List
       height={height}
+      width="100%"
       itemCount={items.length}
       itemSize={itemHeight}
       itemData={items}
