@@ -24,6 +24,7 @@ import {
 import { BACKEND_URL } from "@/lib/config"
 import { isAuthenticated, getUserData, getAuthToken } from "@/lib/auth"
 import ItemDetailModal from "@/components/features/item-detail-modal"
+import LoadingSkeleton from "@/components/loading-skeleton"
 import EnhancedFloatingChat from "@/components/enhanced-floating-chat"
 
 
@@ -88,6 +89,10 @@ export default function BrowsePage() {
   const itemsPerPage = 20
 
   useEffect(() => {
+    // Preload placeholder image
+    const img = new Image()
+    img.src = '/placeholder.svg'
+    
     // Check authentication
     const auth = isAuthenticated()
     setAuthenticated(auth)
@@ -450,18 +455,7 @@ export default function BrowsePage() {
 
             {/* Items Display */}
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i} className="animate-pulse">
-                    <div className="h-40 sm:h-48 bg-gray-200 rounded-t-lg"></div>
-                    <CardContent className="p-3 sm:p-4">
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <LoadingSkeleton />
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 auto-rows-fr">
                 {sortedItems.map((item) => (
@@ -474,6 +468,10 @@ export default function BrowsePage() {
                         src={item.itemImageUrl || item.imageUrl || "/placeholder.svg"}
                         alt={item.title}
                         className="w-full h-40 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder.svg'
+                        }}
                       />
                       <div
                         className={`absolute top-2 left-2 w-3 h-3 rounded-full ${getUrgencyColor(item.urgency)} animate-pulse`}
@@ -556,6 +554,10 @@ export default function BrowsePage() {
                             src={item.itemImageUrl || item.imageUrl || "/placeholder.svg"}
                             alt={item.title}
                             className="w-24 h-24 object-cover rounded-lg"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.src = '/placeholder.svg'
+                            }}
                           />
                           <div
                             className={`absolute top-1 left-1 w-2 h-2 rounded-full ${getUrgencyColor(item.urgency)} animate-pulse`}

@@ -16,23 +16,24 @@ console.log('✅ Using text-based matching for item suggestions');
 router.get('/', trackActivity('search'), async (req, res) => {
   try {
     const { page = 1, limit = 20, status, category } = req.query;
-    const actualLimit = Math.min(parseInt(limit), 50); // Max 50 items per page
+    const actualLimit = Math.min(parseInt(limit), 50);
     const skip = (parseInt(page) - 1) * actualLimit;
     
     const filter = {};
     if (status && status !== 'All') filter.status = status;
     if (category && category !== 'All Categories') filter.category = category;
     
-    // Get total count for pagination
-    const totalItems = await Item.countDocuments(filter);
-    
-    // Get paginated items
-    const items = await Item.find(filter)
-      .populate('reportedBy', 'name email')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(actualLimit)
-      .lean();
+    // Parallel queries for better performance
+    const [totalItems, items] = await Promise.all([
+      Item.countDocuments(filter),
+      Item.find(filter)
+        .populate('reportedBy', 'name email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(actualLimit)
+        .lean()
+        .select('title description category location status imageUrl itemImageUrl createdAt reportedBy contactInfo')
+    ]);
     
     res.json({
       items,
