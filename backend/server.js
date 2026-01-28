@@ -90,9 +90,9 @@ app.use(cors({
     
     // Strict origin checking in production
     if (config.NODE_ENV === 'production') {
-      // No origin for mobile apps/Postman - require specific header
+      // No origin for mobile apps/Postman - allow if no origin
       if (!origin) {
-        return req.get('X-API-Key') === config.API_KEY ? callback(null, true) : callback(new Error('Origin required'));
+        return callback(null, true);
       }
       
       // Only allow exact matches or verified Vercel subdomains
