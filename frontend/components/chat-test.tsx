@@ -34,7 +34,7 @@ export default function ChatTest({ itemId }: { itemId: string }) {
       }
     } catch (error) {
       console.error('Chat test error:', error)
-      setResult(`❌ Network error: ${error.message}`)
+      setResult(`❌ Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
