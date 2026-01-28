@@ -40,13 +40,30 @@ export default function LiveActivity() {
 
   const fetchActivities = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/items?sort=createdAt&order=desc&limit=5`)
+      console.log('🔄 Fetching live activities...')
+      const response = await fetch(`${BACKEND_URL}/api/items?sort=createdAt&order=desc&limit=5`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      })
+      
+      console.log('📡 Live activity response status:', response.status)
+      
       if (response.ok) {
-        const data = await response.json()
+        const apiResponse = await response.json()
+        // Handle both array and object responses
+        const data = Array.isArray(apiResponse) ? apiResponse : (apiResponse.items || apiResponse.data || [])
+        console.log('✅ Live activities loaded:', data.length, 'items')
         setActivities(Array.isArray(data) ? data.slice(0, 5) : [])
+      } else {
+        console.error('❌ API response not ok:', response.status)
+        setActivities([])
       }
     } catch (error) {
-      console.error('Error fetching activities:', error)
+      console.error('❌ Error fetching activities:', error)
+      setActivities([])
     } finally {
       setLoading(false)
     }
@@ -57,8 +74,13 @@ export default function LiveActivity() {
     try {
       const response = await fetch(`${BACKEND_URL}/api/items?sort=createdAt&order=desc&limit=100`)
       if (response.ok) {
-        const data = await response.json()
-        setAllActivities(data)
+        const apiResponse = await response.json()
+        // Handle both array and object responses
+        const data = Array.isArray(apiResponse) ? apiResponse : (apiResponse.items || apiResponse.data || [])
+        setAllActivities(Array.isArray(data) ? data : [])
+      } else {
+        console.error('API response not ok:', response.status)
+        setAllActivities([])
       }
     } catch (error) {
       console.error('Error fetching all activities:', error)

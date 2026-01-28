@@ -43,11 +43,23 @@ export default function EventHighlights() {
 
   const fetchEventData = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/items`)
+      console.log('🔄 Fetching event data...')
+      const response = await fetch(`${BACKEND_URL}/api/items`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      })
+      
+      console.log('📡 Event data response status:', response.status)
+      
       if (response.ok) {
         const itemsResponse = await response.json()
         // Handle both array and object responses
         const items = Array.isArray(itemsResponse) ? itemsResponse : (itemsResponse.items || itemsResponse.data || [])
+        
+        console.log('✅ Event data loaded:', items.length, 'items')
         
         // Group items by event-related keywords and create event data
         const eventGroups: { [key: string]: any[] } = {}
@@ -116,9 +128,13 @@ export default function EventHighlights() {
         })
         
         setEventsData(mappedEvents)
+      } else {
+        console.error('❌ Event API response not ok:', response.status)
+        setEventsData([])
       }
     } catch (error) {
-      console.error('Error fetching event data:', error)
+      console.error('❌ Error fetching event data:', error)
+      setEventsData([])
     } finally {
       setLoading(false)
     }
