@@ -12,9 +12,7 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   generateEtags: false,
-  experimental: {
-    optimizePackageImports: ['@tensorflow/tfjs', '@tensorflow-models/mobilenet'],
-  },
+  experimental: {},
   turbopack: {},
   async rewrites() {
     return [
