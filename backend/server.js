@@ -213,6 +213,20 @@ try {
   console.log('Server will continue without cleanup job');
 }
 
+// Root endpoint for health check
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Lost & Found API Server',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      items: '/api/items',
+      auth: '/api/auth'
+    }
+  });
+});
+
 app.use('/api', healthRoutes);
 // Serve uploaded images with proper error handling
 app.use('/uploads', express.static('uploads', {
