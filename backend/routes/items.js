@@ -8,6 +8,8 @@ const auth = require('../middleware/authMiddleware');
 const upload = require('../middleware/cloudinaryUpload');
 const { trackActivity } = require('../middleware/activityTracker');
 const config = require('../config/environment');
+const { getCache, setCache } = require('../config/redis');
+const MatchingService = require('../services/matchingService');
 const router = express.Router();
 
 // Text-based matching only - stable and effective
@@ -23,19 +25,26 @@ router.get('/', trackActivity('search'), async (req, res) => {
     if (status && status !== 'All') filter.status = status;
     if (category && category !== 'All Categories') filter.category = category;
     
+    // Check cache first
+    const cacheKey = `items:${page}:${actualLimit}:${status || 'all'}:${category || 'all'}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    
     // Parallel queries for better performance
     const [totalItems, items] = await Promise.all([
       Item.countDocuments(filter),
       Item.find(filter)
-        .populate('reportedBy', 'name email')
+        .populate('reportedBy', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(actualLimit)
         .lean()
-        .select('title description category location status imageUrl itemImageUrl createdAt reportedBy contactInfo')
+        .select('title category location status imageUrl createdAt reportedBy')
     ]);
     
-    res.json({
+    const result = {
       items,
       pagination: {
         currentPage: parseInt(page),
@@ -43,7 +52,11 @@ router.get('/', trackActivity('search'), async (req, res) => {
         totalItems,
         itemsPerPage: actualLimit
       }
-    });
+    };
+    
+    // Cache for 2 minutes
+    await setCache(cacheKey, result, 120);
+    res.json(result);
   } catch (error) {
     console.error('Error fetching items:', error);
     res.status(500).json({ message: 'Server error' });
@@ -89,149 +102,17 @@ router.get('/ai-matches', auth, async (req, res) => {
 
 router.get('/potential-matches', auth, async (req, res) => {
   try {
-    // Get user's items to find potential matches
-    const userItems = await Item.find({ reportedBy: req.userId });
-    
-    if (userItems.length === 0) {
-      return res.json([]);
+    // Check cache first
+    const cached = await getCache(`matches:${req.userId}`);
+    if (cached) {
+      return res.json(cached);
     }
     
-    // Get all items from other users with opposite status
-    const allItems = await Item.find({
-      reportedBy: { $ne: req.userId },
-      $or: [
-        { status: 'found' },
-        { status: 'lost' }
-      ]
-    }).populate('reportedBy', 'name email');
-    
-    // Smart matching algorithm
-    const matches = [];
-    
-    userItems.forEach(userItem => {
-      const oppositeStatus = userItem.status === 'lost' ? 'found' : 'lost';
-      
-      allItems.forEach(item => {
-        if (item.status === oppositeStatus) {
-          let score = 0;
-          
-          // 1. Category/Product name matching (40 points)
-          if (userItem.category && item.category && 
-              userItem.category.toLowerCase() === item.category.toLowerCase()) {
-            score += 40;
-          }
-          
-          // 2. Location matching (30 points)
-          if (userItem.location && item.location) {
-            const userLoc = userItem.location.toLowerCase();
-            const itemLoc = item.location.toLowerCase();
-            if (userLoc.includes(itemLoc) || itemLoc.includes(userLoc)) {
-              score += 30;
-            }
-          }
-          
-          // 3. Color matching in title/description (20 points)
-          const colors = ['red', 'blue', 'green', 'yellow', 'black', 'white', 'brown', 'pink', 'purple', 'orange', 'gray', 'grey', 'silver', 'gold'];
-          const userText = `${userItem.title} ${userItem.description}`.toLowerCase();
-          const itemText = `${item.title} ${item.description}`.toLowerCase();
-          
-          colors.forEach(color => {
-            if (userText.includes(color) && itemText.includes(color)) {
-              score += 20;
-            }
-          });
-          
-          // 4. Brand matching (25 points)
-          const brands = ['apple', 'samsung', 'sony', 'nike', 'adidas', 'hp', 'dell', 'lenovo', 'canon', 'nikon'];
-          brands.forEach(brand => {
-            if (userText.includes(brand) && itemText.includes(brand)) {
-              score += 25;
-            }
-          });
-          
-          // 5. Size matching (15 points)
-          const sizes = ['small', 'medium', 'large', 'big', 'tiny', 'huge', 'mini'];
-          sizes.forEach(size => {
-            if (userText.includes(size) && itemText.includes(size)) {
-              score += 15;
-            }
-          });
-          
-          // 6. Time proximity (10 points)
-          const userDate = new Date(userItem.dateLostFound || userItem.createdAt);
-          const itemDate = new Date(item.dateLostFound || item.createdAt);
-          const daysDiff = Math.abs((userDate.getTime() - itemDate.getTime()) / (1000 * 60 * 60 * 24));
-          if (daysDiff <= 7) score += 10; // Within a week
-          else if (daysDiff <= 30) score += 5; // Within a month
-          
-          // 7. Material/Texture matching (10 points)
-          const materials = ['leather', 'plastic', 'metal', 'fabric', 'wood', 'glass', 'rubber', 'cotton', 'silk', 'denim'];
-          materials.forEach(material => {
-            if (userText.includes(material) && itemText.includes(material)) {
-              score += 10;
-            }
-          });
-          
-          // 8. Condition matching (5 points)
-          const conditions = ['new', 'old', 'damaged', 'worn', 'broken', 'cracked', 'scratched', 'mint'];
-          conditions.forEach(condition => {
-            if (userText.includes(condition) && itemText.includes(condition)) {
-              score += 5;
-            }
-          });
-          
-          // 9. Special features matching (15 points)
-          const features = ['cracked screen', 'missing button', 'sticker', 'engraving', 'keychain', 'charm', 'case', 'cover'];
-          features.forEach(feature => {
-            if (userText.includes(feature) && itemText.includes(feature)) {
-              score += 15;
-            }
-          });
-          
-          // 10. Value indicators (10 points)
-          const values = ['expensive', 'cheap', 'valuable', 'priceless', 'costly', 'budget', 'premium'];
-          values.forEach(value => {
-            if (userText.includes(value) && itemText.includes(value)) {
-              score += 10;
-            }
-          });
-          
-          // 11. Keyword matching (3 points)
-          const userWords = userText.split(/\s+/).filter(word => word.length > 2);
-          const itemWords = itemText.split(/\s+/).filter(word => word.length > 2);
-          
-          userWords.forEach(userWord => {
-            itemWords.forEach(itemWord => {
-              if (userWord === itemWord) {
-                score += 3;
-              }
-            });
-          });
-          
-          // Add to matches if score is above threshold
-          if (score >= 10) {
-            matches.push({ ...item.toObject(), matchScore: Math.min(score, 100) });
-          }
-        }
-      });
-    });
-    
-    // Remove duplicates and sort by score
-    const uniqueMatches = matches.reduce((acc, current) => {
-      const existing = acc.find(item => item._id.toString() === current._id.toString());
-      if (!existing || current.matchScore > existing.matchScore) {
-        return acc.filter(item => item._id.toString() !== current._id.toString()).concat(current);
-      }
-      return acc;
-    }, []);
-    
-    // Sort by match score (highest first) and limit to 6
-    const sortedMatches = uniqueMatches
-      .sort((a, b) => b.matchScore - a.matchScore)
-      .slice(0, 6);
-    
-    res.json(sortedMatches);
+    // Compute matches in background service
+    const matches = await MatchingService.computeMatches(req.userId);
+    res.json(matches);
   } catch (error) {
+    console.error('Error fetching potential matches:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

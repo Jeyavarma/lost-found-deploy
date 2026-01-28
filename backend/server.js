@@ -7,6 +7,8 @@ const compression = require('compression');
 const http = require('http');
 const socketIo = require('socket.io');
 const config = require('./config/environment');
+const { connectRedis } = require('./config/redis');
+const MatchingService = require('./services/matchingService');
 
 const authRoutes = require('./routes/auth');
 const itemRoutes = require('./routes/items');
@@ -120,7 +122,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 
 mongoose.connect(config.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => {
+    console.log('Connected to MongoDB');
+    // Initialize Redis and background services
+    connectRedis();
+    MatchingService.scheduleMatchUpdates();
+  })
   .catch(err => {
     console.error('MongoDB connection error:', err)
     if (config.NODE_ENV === 'production') {
