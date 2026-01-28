@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const config = require('../config/environment');
+const User = require('../../models/User');
+const config = require('../../config/environment');
 const { SessionManager, isTokenBlacklisted } = require('./sessionManager');
 
 const protect = async (req, res, next) => {
