@@ -1,27 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['res.cloudinary.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+    ],
     formats: ['image/webp', 'image/avif'],
   },
   compress: true,
   poweredByHeader: false,
   generateEtags: false,
-  swcMinify: true,
   experimental: {
     optimizePackageImports: ['@tensorflow/tfjs', '@tensorflow-models/mobilenet'],
     optimizeCss: true,
   },
-  webpack: (config, { isServer }) => {
-    // Optimize TensorFlow.js bundle
-    if (!isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@tensorflow/tfjs$': '@tensorflow/tfjs/dist/tf.min.js',
-      };
-    }
-    return config;
-  },
+  turbopack: {},
   async rewrites() {
     return [
       {
