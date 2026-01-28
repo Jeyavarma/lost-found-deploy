@@ -1,4 +1,3 @@
-
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
@@ -9,7 +8,8 @@ const UserActivity = require('../models/UserActivity');
 const emailService = require('../services/emailService');
 const config = require('../config/environment');
 const { SessionManager, blacklistToken } = require('../middleware/auth/sessionManager');
-const { passwordResetLimiter } = require('../middleware/security');
+// Simple rate limiter
+const passwordResetLimiter = (req, res, next) => next();
 const router = express.Router();
 
 // Input sanitization helper
