@@ -26,7 +26,10 @@ const chatMessageSchema = new mongoose.Schema({
     enum: ['text', 'image', 'system'],
     default: 'text'
   },
-  clientMessageId: String,
+  clientMessageId: {
+    type: String,
+    index: true
+  },
   deliveryStatus: {
     type: String,
     enum: ['sent', 'delivered', 'read'],

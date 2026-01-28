@@ -1,25 +1,35 @@
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+// Import CloudinaryStorage with fallback
+let CloudinaryStorage;
+try {
+  CloudinaryStorage = require('multer-storage-cloudinary').CloudinaryStorage;
+} catch (error) {
+  console.log('CloudinaryStorage module not available, using memory storage');
+}
 
 // Fix CloudinaryStorage import issue
 let storage;
 try {
-  storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-      folder: 'mcc-lost-found',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
-      transformation: [{ width: 800, height: 600, crop: 'limit' }],
-      public_id: (req, file) => {
-        const timestamp = Date.now();
-        const random = Math.round(Math.random() * 1E9);
-        return `${file.fieldname}-${timestamp}-${random}`;
-      }
-    },
-  });
+  if (CloudinaryStorage) {
+    storage = new CloudinaryStorage({
+      cloudinary: cloudinary,
+      params: {
+        folder: 'mcc-lost-found',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+        transformation: [{ width: 800, height: 600, crop: 'limit' }],
+        public_id: (req, file) => {
+          const timestamp = Date.now();
+          const random = Math.round(Math.random() * 1E9);
+          return `${file.fieldname}-${timestamp}-${random}`;
+        }
+      },
+    });
+  } else {
+    throw new Error('CloudinaryStorage not available');
+  }
 } catch (error) {
-  console.log('CloudinaryStorage error, using memory storage:', error.message);
+  console.log('Using memory storage fallback:', error.message);
   // Fallback to memory storage if CloudinaryStorage fails
   storage = multer.memoryStorage();
 }
