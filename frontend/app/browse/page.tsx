@@ -664,7 +664,7 @@ export default function BrowsePage() {
         onStartChat={handleStartChat}
       />
       
-      {/* <EnhancedFloatingChat /> */}
+      <EnhancedFloatingChat />
     </div>
   )
 }
