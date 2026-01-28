@@ -5,7 +5,7 @@ const User = require('../models/User')
 const UserActivity = require('../models/UserActivity')
 const ItemTransaction = require('../models/ItemTransaction')
 const LoginAttempt = require('../models/LoginAttempt')
-const authMiddleware = require('../middleware/authMiddleware')
+const authMiddleware = require('../middleware/auth/authMiddleware')
 
 // Advanced Analytics Dashboard
 router.get('/dashboard', authMiddleware, async (req, res) => {

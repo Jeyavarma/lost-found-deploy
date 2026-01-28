@@ -6,7 +6,7 @@ const Item = require('../models/Item');
 const UserActivity = require('../models/UserActivity');
 const LoginAttempt = require('../models/LoginAttempt');
 const ItemTransaction = require('../models/ItemTransaction');
-const auth = require('../middleware/authMiddleware');
+const auth = require('../middleware/auth/authMiddleware');
 
 // Input sanitization helper
 const sanitizeInput = (input) => {

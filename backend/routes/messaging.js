@@ -3,7 +3,7 @@ const router = express.Router()
 const AdminMessage = require('../models/AdminMessage')
 const User = require('../models/User')
 const UserActivity = require('../models/UserActivity')
-const authMiddleware = require('../middleware/authMiddleware')
+const authMiddleware = require('../middleware/auth/authMiddleware')
 
 // Send message to user
 router.post('/send', authMiddleware, async (req, res) => {

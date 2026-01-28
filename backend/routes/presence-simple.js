@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/auth/authMiddleware');
 
 // Simple presence routes
 router.get('/status/:userId', authMiddleware, async (req, res) => {

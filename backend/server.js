@@ -9,6 +9,7 @@ const socketIo = require('socket.io');
 const config = require('./config/environment');
 const { connectRedis } = require('./config/redis');
 const MatchingService = require('./services/matchingService');
+const { sendEmail } = require('./config/email');
 
 const authRoutes = require('./routes/auth');
 const itemRoutes = require('./routes/items');

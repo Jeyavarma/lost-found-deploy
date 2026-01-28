@@ -1,6 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/auth/authMiddleware');
 const router = express.Router();
 
 // Update user presence (heartbeat)

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Item = require('../models/Item');
-const auth = require('../middleware/authMiddleware');
+const auth = require('../middleware/auth/authMiddleware');
 
 // =============================
 // 🧭  PUBLIC AI SEARCH (no auth)

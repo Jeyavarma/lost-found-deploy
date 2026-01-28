@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const Item = require('../models/Item')
-const authMiddleware = require('../middleware/authMiddleware')
+const authMiddleware = require('../middleware/auth/authMiddleware')
 
 // Store image features when item is created
 router.post('/store-features', authMiddleware, async (req, res) => {

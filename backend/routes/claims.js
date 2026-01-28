@@ -3,7 +3,7 @@ const router = express.Router();
 const Claim = require('../models/Claim');
 const Item = require('../models/Item');
 const User = require('../models/User');
-const auth = require('../middleware/authMiddleware');
+const auth = require('../middleware/auth/authMiddleware');
 
 // Submit a claim for a lost item
 router.post('/submit', auth, async (req, res) => {

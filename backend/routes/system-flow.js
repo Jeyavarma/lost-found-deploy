@@ -5,7 +5,7 @@ const Item = require('../models/Item')
 const UserActivity = require('../models/UserActivity')
 const ItemTransaction = require('../models/ItemTransaction')
 const LoginAttempt = require('../models/LoginAttempt')
-const authMiddleware = require('../middleware/authMiddleware')
+const authMiddleware = require('../middleware/auth/authMiddleware')
 
 // Real-time system flow data
 router.get('/live-metrics', authMiddleware, async (req, res) => {

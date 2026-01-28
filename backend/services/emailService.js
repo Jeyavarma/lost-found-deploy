@@ -28,7 +28,7 @@ class EmailService {
       });
     } else {
       // Fallback to console logging for development
-      console.log('No email service configured. Emails will be logged to console.');
+      console.log('ℹ️  Email service not configured - using console logging for development');
     }
   }
 

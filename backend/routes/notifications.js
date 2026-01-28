@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Item = require('../models/Item');
-const auth = require('../middleware/authMiddleware');
+const auth = require('../middleware/auth/authMiddleware');
 
 // Send notification to users
 router.post('/send', auth, async (req, res) => {

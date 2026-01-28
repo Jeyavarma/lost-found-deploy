@@ -3,7 +3,7 @@ const router = express.Router()
 const Item = require('../models/Item')
 const User = require('../models/User')
 const UserActivity = require('../models/UserActivity')
-const authMiddleware = require('../middleware/authMiddleware')
+const authMiddleware = require('../middleware/auth/authMiddleware')
 
 // Content moderation queue
 router.get('/queue', authMiddleware, async (req, res) => {

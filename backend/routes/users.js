@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/auth/authMiddleware');
 
 // Search users for chat
 router.get('/search', authMiddleware, async (req, res) => {
