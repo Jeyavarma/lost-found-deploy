@@ -59,10 +59,17 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🔄 Login form submitted')
+    console.log('📧 Email:', formData.email)
+    console.log('🔑 Password length:', formData.password.length)
+    console.log('👤 Role:', selectedPortal)
+    console.log('🌐 Backend URL:', BACKEND_URL)
+    
     setIsLoading(true)
     setError("")
 
     try {
+      console.log('📡 Making login request...')
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: "POST",
         headers: {
@@ -71,9 +78,12 @@ export default function LoginPage() {
         body: JSON.stringify({ ...formData, role: selectedPortal }),
       });
 
+      console.log('📥 Response status:', response.status)
       const data = await response.json();
+      console.log('📄 Response data:', data)
 
       if (response.ok) {
+        console.log('✅ Login successful, storing auth data...')
         // Store auth data using the auth utility
         const { setAuthToken, setUserData } = await import('@/lib/auth');
         setAuthToken(data.token);
@@ -89,13 +99,17 @@ export default function LoginPage() {
         localStorage.setItem("userName", data.name);
         localStorage.setItem("token", data.token);
         
+        console.log('🚀 Redirecting to dashboard...')
         router.push("/dashboard");
       } else if (response.status === 429) {
+        console.log('⏰ Rate limited')
         setError(data.error || "Too many login attempts. Please wait 15 minutes before trying again.");
       } else {
+        console.log('❌ Login failed:', data)
         setError(data.message || data.error || "Invalid credentials. Please check your email and password.");
       }
     } catch (err) {
+      console.log('🔥 Network error:', err)
       setError("Failed to connect to the server. Please try again later.");
     } finally {
       setIsLoading(false);
