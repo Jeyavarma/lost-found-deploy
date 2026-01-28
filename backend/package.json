@@ -17,8 +17,6 @@
     "optimize": "npm run security-audit && npm run add-indexes"
   },
   "dependencies": {
-    "@tensorflow-models/mobilenet": "^2.1.1",
-    "@tensorflow/tfjs-node": "^0.1.11",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "canvas": "^3.2.0",
