@@ -7,7 +7,7 @@ const compression = require('compression');
 const http = require('http');
 const socketIo = require('socket.io');
 const config = require('./config/environment');
-const { connectRedis } = require('./config/redis');
+const { connectRedis } = require('./config/redis-replacement');
 const MatchingService = require('./services/matchingService');
 const { sendEmail } = require('./config/email');
 

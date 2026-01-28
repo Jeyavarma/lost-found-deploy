@@ -1,5 +1,5 @@
 const Item = require('../models/Item');
-const { setCache } = require('../config/redis');
+const { setCache } = require('../config/redis-replacement');
 
 class MatchingService {
   static async computeMatches(userId) {

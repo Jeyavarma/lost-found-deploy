@@ -8,7 +8,7 @@ const auth = require('../middleware/auth/authMiddleware');
 const upload = require('../middleware/cloudinaryUpload');
 const { trackActivity } = require('../middleware/monitoring/activityTracker');
 const config = require('../config/environment');
-const { getCache, setCache } = require('../config/redis');
+const { getCache, setCache } = require('../config/redis-replacement');
 const MatchingService = require('../services/matchingService');
 const router = express.Router();
 
