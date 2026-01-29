@@ -117,14 +117,15 @@ export default function LoginPage() {
         console.log('💾 Stored userType:', storedUserType)
         
         console.log('🚀 Redirecting to dashboard...')
+        console.log('🧪 Testing redirect methods...')
         
         // Test direct navigation
-        console.log('🧪 Testing window.location.href redirect...')
+        console.log('🌐 Method 1: window.location.href redirect...')
         window.location.href = '/dashboard'
         
         // Also try router.push as backup
         setTimeout(() => {
-          console.log('🔄 Backup: Using router.push...')
+          console.log('🔄 Method 2: router.push backup...')
           router.push("/dashboard");
         }, 500)
         
