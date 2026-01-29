@@ -118,26 +118,34 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
+      console.log('🔍 Dashboard: Checking authentication...')
+      
       if (!isAuthenticated()) {
+        console.log('❌ Dashboard: Not authenticated, redirecting to login')
         window.location.href = '/login'
         return
       }
-
+      
+      console.log('✅ Dashboard: User is authenticated')
       const userData = getUserData()
+      console.log('👤 Dashboard: User data:', userData)
       setUser(userData)
       
       // Redirect staff users to staff portal
       if (userData?.role === 'staff') {
+        console.log('🏢 Dashboard: Staff user, redirecting to staff portal')
         window.location.href = '/staff'
         return
       }
       
       // Redirect admin users to admin portal
       if (userData?.role === 'admin') {
+        console.log('👑 Dashboard: Admin user, redirecting to admin portal')
         window.location.href = '/admin'
         return
       }
       
+      console.log('📚 Dashboard: Student user, loading dashboard data...')
       await loadUserItems()
       await loadPotentialMatches()
       
@@ -145,6 +153,7 @@ export default function DashboardPage() {
       socketManager.connect()
       
       setLoading(false)
+      console.log('✅ Dashboard: Fully loaded')
     }
 
     const handleItemSubmitted = () => {

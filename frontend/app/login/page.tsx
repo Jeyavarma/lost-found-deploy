@@ -118,10 +118,15 @@ export default function LoginPage() {
         
         console.log('🚀 Redirecting to dashboard...')
         
-        // Add a small delay to ensure storage completes
+        // Test direct navigation
+        console.log('🧪 Testing window.location.href redirect...')
+        window.location.href = '/dashboard'
+        
+        // Also try router.push as backup
         setTimeout(() => {
+          console.log('🔄 Backup: Using router.push...')
           router.push("/dashboard");
-        }, 100)
+        }, 500)
         
       } else if (response.status === 429) {
         console.log('⏰ Rate limited')
