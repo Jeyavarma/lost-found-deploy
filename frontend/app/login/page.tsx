@@ -84,6 +84,17 @@ export default function LoginPage() {
 
       if (response.ok) {
         console.log('✅ Login successful, storing auth data...')
+        
+        // Test localStorage before storing
+        try {
+          localStorage.setItem('test', 'working')
+          const test = localStorage.getItem('test')
+          console.log('💾 LocalStorage test:', test === 'working' ? 'WORKING' : 'FAILED')
+          localStorage.removeItem('test')
+        } catch (e) {
+          console.error('💾 LocalStorage ERROR:', e)
+        }
+        
         // Store auth data using the auth utility
         const { setAuthToken, setUserData } = await import('@/lib/auth');
         setAuthToken(data.token);
@@ -99,8 +110,19 @@ export default function LoginPage() {
         localStorage.setItem("userName", data.name);
         localStorage.setItem("token", data.token);
         
+        // Verify storage worked
+        const storedToken = localStorage.getItem('token')
+        const storedUserType = localStorage.getItem('userType')
+        console.log('💾 Stored token:', storedToken ? 'YES' : 'NO')
+        console.log('💾 Stored userType:', storedUserType)
+        
         console.log('🚀 Redirecting to dashboard...')
-        router.push("/dashboard");
+        
+        // Add a small delay to ensure storage completes
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 100)
+        
       } else if (response.status === 429) {
         console.log('⏰ Rate limited')
         setError(data.error || "Too many login attempts. Please wait 15 minutes before trying again.");
