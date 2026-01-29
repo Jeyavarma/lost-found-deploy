@@ -41,7 +41,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
-  // Mock stats for admin preview
+  // Debug version 1.1 - Force fresh deployment
   const adminStats = {
     totalItems: 234,
     activeItems: 89,
