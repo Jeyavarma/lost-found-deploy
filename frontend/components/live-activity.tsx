@@ -56,7 +56,7 @@ export default function LiveActivity() {
         setActivities(Array.isArray(data) ? data.slice(0, 5) : [])
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.log('⏰ Live activity fetch aborted due to timeout')
       } else {
         console.error('❌ Error fetching activities:', error)

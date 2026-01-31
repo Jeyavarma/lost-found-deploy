@@ -123,7 +123,7 @@ export default function EventHighlights() {
         setEventsData(mappedEvents)
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.log('Event data fetch aborted due to timeout')
       } else {
         console.error('Error fetching event data:', error)
