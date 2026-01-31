@@ -40,13 +40,28 @@ export default function LiveActivity() {
 
   const fetchActivities = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/items?sort=createdAt&order=desc&limit=5`)
+      console.log('🔄 Fetching live activities...')
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 second timeout
+      
+      const response = await fetch(`${BACKEND_URL}/api/items?sort=createdAt&order=desc&limit=5`, {
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+      
+      console.log('📡 Live activity response status:', response.status)
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ Live activities loaded:', data.length, 'items')
         setActivities(Array.isArray(data) ? data.slice(0, 5) : [])
       }
     } catch (error) {
-      console.error('Error fetching activities:', error)
+      if (error.name === 'AbortError') {
+        console.log('⏰ Live activity fetch aborted due to timeout')
+      } else {
+        console.error('❌ Error fetching activities:', error)
+      }
+      setActivities([]) // Prevent infinite retries
     } finally {
       setLoading(false)
     }
@@ -76,7 +91,8 @@ export default function LiveActivity() {
 
   useEffect(() => {
     fetchActivities()
-    const interval = setInterval(fetchActivities, 30000)
+    // Reduce interval frequency to prevent spam
+    const interval = setInterval(fetchActivities, 60000) // 1 minute instead of 30 seconds
     
     // Listen for item submission events to refresh immediately
     const handleItemSubmitted = () => {

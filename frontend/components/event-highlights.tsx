@@ -43,7 +43,14 @@ export default function EventHighlights() {
 
   const fetchEventData = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/items`)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      
+      const response = await fetch(`${BACKEND_URL}/api/items`, {
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+      
       if (response.ok) {
         const items = await response.json()
         
@@ -116,7 +123,12 @@ export default function EventHighlights() {
         setEventsData(mappedEvents)
       }
     } catch (error) {
-      console.error('Error fetching event data:', error)
+      if (error.name === 'AbortError') {
+        console.log('Event data fetch aborted due to timeout')
+      } else {
+        console.error('Error fetching event data:', error)
+      }
+      setEventsData([]) // Set empty array to stop retries
     } finally {
       setLoading(false)
     }
