@@ -65,7 +65,12 @@ export async function validateToken(token: string): Promise<boolean> {
 }
 
 export function isAuthenticated(): boolean {
+  if (typeof window === 'undefined') return false
   const token = getAuthToken()
+  console.log('🔍 Auth check - token exists:', !!token)
+  if (token) {
+    console.log('🔍 Token preview:', token.substring(0, 20) + '...')
+  }
   return !!token
 }
 
