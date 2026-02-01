@@ -423,7 +423,7 @@ router.get('/validate', async (req, res) => {
       return res.status(401).json({ message: 'No token provided' });
     }
 
-    const decoded = SessionManager.verifyToken(token);
+    const decoded = jwt.verify(token, config.JWT_SECRET);
     const user = await User.findById(decoded.userId).select('-password');
     
     if (!user) {
