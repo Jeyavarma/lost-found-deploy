@@ -10,7 +10,7 @@ export const USER_DATA_KEY = process.env.NEXT_PUBLIC_USER_DATA_KEY || 'mcc_user_
 
 // Get backend URL from environment
 const getBackendUrl = () => {
-  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+  return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lost-found-79xn.onrender.com'
 }
 
 export function getAuthToken(): string | null {
