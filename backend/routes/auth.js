@@ -186,14 +186,10 @@ router.post('/login', async (req, res) => {
     user.loginAttempts = 0; // Reset failed attempts
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, config.JWT_SECRET, { expiresIn: '7d' });
-    
-    res.json({
-      token,
-      userId: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role
+    const token = jwt.sign({ userId: user._id }, config.JWT_SECRET, {
+      expiresIn: '7d',
+      issuer: 'mcc-lost-found',
+      audience: 'mcc-users'
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -263,7 +259,11 @@ router.post('/register', async (req, res) => {
       console.error('Failed to send welcome email:', err)
     );
 
-    const token = jwt.sign({ userId: user._id }, config.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user._id }, config.JWT_SECRET, {
+      expiresIn: '7d',
+      issuer: 'mcc-lost-found',
+      audience: 'mcc-users'
+    });
     
     res.status(201).json({
       token,
@@ -400,7 +400,11 @@ router.post('/create-first-admin', async (req, res) => {
     });
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, config.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user._id }, config.JWT_SECRET, {
+      expiresIn: '7d',
+      issuer: 'mcc-lost-found',
+      audience: 'mcc-users'
+    });
     
     res.status(201).json({
       message: 'First admin account created successfully',
@@ -423,7 +427,7 @@ router.get('/validate', async (req, res) => {
       return res.status(401).json({ message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, config.JWT_SECRET);
+    const decoded = SessionManager.verifyToken(token);
     const user = await User.findById(decoded.userId).select('-password');
     
     if (!user) {
