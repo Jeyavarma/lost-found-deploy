@@ -25,15 +25,7 @@ const isValidEmail = (email) => {
 
 // Strong password validation helper
 const isValidPassword = (password) => {
-  if (!password || password.length < 8 || password.length > 128) return false;
-  
-  // Must contain at least one uppercase, lowercase, number, and special character
-  const hasUpper = /[A-Z]/.test(password);
-  const hasLower = /[a-z]/.test(password);
-  const hasNumber = /\d/.test(password);
-  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  
-  return hasUpper && hasLower && hasNumber && hasSpecial;
+  return password && password.length >= 1;
 };
 
 // Password strength checker
@@ -190,6 +182,14 @@ router.post('/login', async (req, res) => {
       expiresIn: '7d',
       issuer: 'mcc-lost-found',
       audience: 'mcc-users'
+    });
+    
+    res.json({
+      token,
+      userId: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
