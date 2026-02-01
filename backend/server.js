@@ -10,6 +10,7 @@ const config = require('./config/environment');
 const { connectRedis } = require('./config/redis');
 const MatchingService = require('./services/matchingService');
 const { sendEmail } = require('./config/email');
+const { specs, swaggerUi } = require('./config/swagger');
 
 const authRoutes = require('./routes/auth');
 const itemRoutes = require('./routes/items');
@@ -177,6 +178,7 @@ app.post('/api/auth/create-first-admin', express.json(), async (req, res) => {
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/items', apiLimiter, itemRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 app.use('/api/homepage', cacheMiddleware(30000), require('./routes/homepage')); // 30 second cache
 app.use('/api/claims', apiLimiter, require('./routes/claims'));
 app.use('/api/ai', apiLimiter, require('./routes/ai-search'));

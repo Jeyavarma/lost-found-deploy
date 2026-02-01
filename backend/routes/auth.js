@@ -12,6 +12,81 @@ const { SessionManager, blacklistToken } = require('../middleware/auth/sessionMa
 const passwordResetLimiter = (req, res, next) => next();
 const router = express.Router();
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       required:
+ *         - name
+ *         - email
+ *         - password
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Full name of the user
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: MCC email address
+ *         password:
+ *           type: string
+ *           description: User password
+ *         phone:
+ *           type: string
+ *           description: Phone number
+ *         studentId:
+ *           type: string
+ *           description: Student ID
+ *         shift:
+ *           type: string
+ *           enum: [aided, sfs]
+ *           description: Academic shift
+ *         department:
+ *           type: string
+ *           description: Department code
+ *         year:
+ *           type: string
+ *           description: Year of study
+ *         rollNumber:
+ *           type: string
+ *           description: Roll number
+ *         role:
+ *           type: string
+ *           enum: [student, staff, admin]
+ *           description: User role
+ *     LoginRequest:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *         password:
+ *           type: string
+ *     AuthResponse:
+ *       type: object
+ *       properties:
+ *         token:
+ *           type: string
+ *           description: JWT token
+ *         userId:
+ *           type: string
+ *           description: User ID
+ *         name:
+ *           type: string
+ *           description: User name
+ *         email:
+ *           type: string
+ *           description: User email
+ *         role:
+ *           type: string
+ *           description: User role
+ */
+
 // Input sanitization helper
 const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
@@ -43,6 +118,32 @@ const getPasswordStrength = (password) => {
   return 'strong';
 };
 
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: User login
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Invalid credentials
+ *       423:
+ *         description: Account locked
+ */
 router.post('/login', async (req, res) => {
   try {
     let { email, password } = req.body;
@@ -196,6 +297,28 @@ router.post('/login', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: User registration
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/User'
+ *     responses:
+ *       201:
+ *         description: Registration successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Invalid input or user exists
+ */
 router.post('/register', async (req, res) => {
   try {
     let { name, email, password, phone, studentId, shift, department, year, rollNumber, role } = req.body;
@@ -419,6 +542,29 @@ router.post('/create-first-admin', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/validate:
+ *   get:
+ *     summary: Validate JWT token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token is valid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 valid:
+ *                   type: boolean
+ *                 user:
+ *                   type: object
+ *       401:
+ *         description: Invalid token
+ */
 router.get('/validate', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
