@@ -49,6 +49,8 @@ const itemSchema = new mongoose.Schema({
   moderationNotes: String,
   // AI Image Matching
   imageFeatures: [Number], // MobileNet feature vector (1024 dimensions)
+  imageEmbedding: [Number], // Visual AI embedding vector
+  embeddingGeneratedAt: Date,
   detectedObjects: [{
     class: String,
     confidence: Number,

@@ -17,6 +17,7 @@
     "optimize": "npm run security-audit && npm run add-indexes"
   },
   "dependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "canvas": "^3.2.0",
