@@ -17,7 +17,15 @@ const nextConfig = {
     return [
       {
         source: '/api/socket.io/:path*',
-        destination: 'https://lost-found-79xn.onrender.com/socket.io/:path*',
+        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/socket.io/:path*`,
+      },
+      {
+        source: '/api/:path*',
+        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/:path*`,
+      },
+      {
+        source: '/uploads/:path*',
+        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/uploads/:path*`,
       },
     ];
   },

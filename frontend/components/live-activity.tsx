@@ -46,11 +46,11 @@ export default function LiveActivity() {
         headers: {
           'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(30000) // 30 second timeout
       })
-      
+
       console.log('📡 Live activity response status:', response.status)
-      
+
       if (response.ok) {
         const apiResponse = await response.json()
         // Handle both array and object responses
@@ -99,7 +99,7 @@ export default function LiveActivity() {
   useEffect(() => {
     fetchActivities()
     const interval = setInterval(fetchActivities, 30000)
-    
+
     // Listen for item submission events to refresh immediately
     const handleItemSubmitted = () => {
       fetchActivities()
@@ -108,9 +108,9 @@ export default function LiveActivity() {
         fetchAllActivities()
       }
     }
-    
+
     window.addEventListener('itemSubmitted', handleItemSubmitted)
-    
+
     return () => {
       clearInterval(interval)
       window.removeEventListener('itemSubmitted', handleItemSubmitted)
@@ -119,9 +119,9 @@ export default function LiveActivity() {
 
   const getFormattedDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       day: 'numeric',
-      month: 'short', 
+      month: 'short',
       year: 'numeric'
     })
   }
@@ -172,9 +172,9 @@ export default function LiveActivity() {
             </CardTitle>
             <CardDescription className="text-brand-text-dark text-sm">Real-time updates from the MCC community</CardDescription>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleViewAll}
             className="border-brand-primary text-brand-primary hover:bg-[#1c1b3b] hover:text-white shrink-0"
           >
@@ -209,7 +209,7 @@ export default function LiveActivity() {
                 </div>
               </div>
               <div className="flex flex-row sm:flex-col items-start sm:items-end justify-between sm:justify-start text-xs text-gray-500 shrink-0">
-                <button 
+                <button
                   onClick={() => {
                     setSelectedActivity(activity)
                     setItemDetailModalOpen(true)
@@ -240,7 +240,7 @@ export default function LiveActivity() {
               All Campus Activity
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 p-1">
             {loadingAll ? (
               <div className="space-y-3 sm:space-y-4">
@@ -278,7 +278,7 @@ export default function LiveActivity() {
                     </div>
                   </div>
                   <div className="flex flex-row sm:flex-col items-start sm:items-end justify-between sm:justify-start text-xs text-gray-500 shrink-0">
-                    <button 
+                    <button
                       onClick={() => {
                         setSelectedActivity(activity)
                         setItemDetailModalOpen(true)

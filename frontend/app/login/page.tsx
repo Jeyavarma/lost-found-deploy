@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -29,9 +29,19 @@ import {
   Settings,
 } from "lucide-react"
 import { BACKEND_URL } from "@/lib/config"
+import { setAuthToken, setUserData } from "@/lib/auth"
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
+  )
+}
+
+function LoginPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [selectedPortal, setSelectedPortal] = useState<"student" | "staff" | "admin" | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -57,12 +67,25 @@ export default function LoginPage() {
     setError("")
   }
 
+  const addLog = (msg: string) => {
+    console.log("[DEBUG]", msg);
+    const el = document.getElementById("debug-log");
+    if (el) {
+      const p = document.createElement("p");
+      p.textContent = msg;
+      el.appendChild(p);
+    }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
+    addLog("STEP 1: Starting login process...");
+
     try {
+      addLog(`STEP 2: Fetching from ${BACKEND_URL}/api/auth/login`);
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: "POST",
         headers: {
@@ -71,34 +94,51 @@ export default function LoginPage() {
         body: JSON.stringify({ ...formData, role: selectedPortal }),
       });
 
+      addLog(`STEP 3: Response received with status: ${response.status}`);
+
       const data = await response.json();
+      addLog("STEP 4: JSON parsed successfully");
 
       if (response.ok) {
-        // Store auth data using the auth utility
-        const { setAuthToken, setUserData } = await import('@/lib/auth');
-        setAuthToken(data.token);
-        setUserData({
-          id: data.userId || data.id,
-          name: data.name,
-          email: data.email || formData.email,
-          role: data.role
-        });
-        
-        // Legacy storage for backward compatibility
-        localStorage.setItem("userType", data.role);
-        localStorage.setItem("userName", data.name);
-        localStorage.setItem("token", data.token);
-        
-        router.push("/dashboard");
-      } else if (response.status === 429) {
-        setError(data.error || "Too many login attempts. Please wait 15 minutes before trying again.");
+        try {
+          addLog("STEP 5: Login OK, storing auth data...");
+          // Store auth data using the auth utility
+          setAuthToken(data.token);
+          setUserData({
+            id: data.userId || data.id,
+            name: data.name,
+            email: data.email || formData.email,
+            role: data.role
+          });
+
+          // Legacy storage for backward compatibility
+          localStorage.setItem("userType", data.role);
+          localStorage.setItem("userName", data.name);
+          localStorage.setItem("token", data.token);
+
+          addLog("STEP 6: Setting window.location.href...");
+          window.location.href = "/dashboard";
+        } catch (storageErr: any) {
+          addLog(`ERROR in STEP 5/6: Storage ${storageErr.message}`);
+          console.error("Storage error:", storageErr);
+          setError("Storage configuration error.");
+        }
       } else {
-        setError(data.message || data.error || "Invalid credentials. Please check your email and password.");
+        addLog(`STEP 5b: Login failed structurally: ${data.message || data.error}`);
+        console.warn("Login failed:", data.message || data.error);
+        if (response.status === 429) {
+          setError(data.error || "Too many login attempts. Please wait 15 minutes before trying again.");
+        } else {
+          setError(data.message || data.error || "Invalid credentials. Please check your email and password.");
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
+      addLog(`ERROR in STEP 2/3/4: Network ${err.message}`);
+      console.error("Login error:", err);
       setError("Failed to connect to the server. Please try again later.");
     } finally {
       setIsLoading(false);
+      addLog("STEP 7: Finished. setIsLoading(false) called.");
     }
   }
 
@@ -353,6 +393,13 @@ export default function LoginPage() {
                     </div>
                   )}
 
+                  {searchParams.get("registered") === "success" && !error && (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="text-sm text-green-700">Registration successful! Please sign in to continue.</span>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     className={`w-full h-12 ${portalInfo.color} hover:opacity-90 text-brand-text-light font-medium text-lg shadow-lg`}
@@ -360,6 +407,10 @@ export default function LoginPage() {
                   >
                     {isLoading ? "Signing In..." : `Sign In to ${portalInfo.title}`}
                   </Button>
+
+                  <div id="debug-log" className="mt-4 p-4 bg-gray-900 text-green-400 font-mono text-xs rounded-md overflow-y-auto max-h-40 border border-gray-700 break-words empty:hidden">
+                    {/* Debug logs will be injected here */}
+                  </div>
                 </form>
 
                 <div className="text-center space-y-4">

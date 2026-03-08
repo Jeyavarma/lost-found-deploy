@@ -49,26 +49,26 @@ export default function EventHighlights() {
         headers: {
           'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(30000) // 30 second timeout
       })
-      
+
       console.log('📡 Event data response status:', response.status)
-      
+
       if (response.ok) {
         const itemsResponse = await response.json()
         // Handle both array and object responses
         const items = Array.isArray(itemsResponse) ? itemsResponse : (itemsResponse.items || itemsResponse.data || [])
-        
+
         console.log('✅ Event data loaded:', items.length, 'items')
-        
+
         // Group items by event-related keywords and create event data
         const eventGroups: { [key: string]: any[] } = {}
-        
+
         items.forEach((item: any) => {
           const description = item.description?.toLowerCase() || ''
           const title = item.title?.toLowerCase() || ''
           const location = item.location?.toLowerCase() || ''
-          
+
           // Check for event-related keywords
           if (description.includes('deepwoods') || title.includes('deepwoods') || location.includes('deepwoods')) {
             if (!eventGroups['Deepwoods']) eventGroups['Deepwoods'] = []
@@ -96,14 +96,14 @@ export default function EventHighlights() {
             eventGroups['Cultural Festival'].push(item)
           }
         })
-        
+
         // Convert to event data format
         const eventData = Object.keys(eventGroups).map(eventName => ({
           name: eventName,
           totalItems: eventGroups[eventName].length,
           items: eventGroups[eventName]
         }))
-        
+
         // Map backend event data to frontend template format
         const mappedEvents = eventData.map((backendEvent: any) => {
           const template = eventTemplates.find(t => t.name === backendEvent.name)
@@ -126,7 +126,7 @@ export default function EventHighlights() {
             }))
           }
         })
-        
+
         setEventsData(mappedEvents)
       } else {
         console.error('❌ Event API response not ok:', response.status)
@@ -139,12 +139,12 @@ export default function EventHighlights() {
       setLoading(false)
     }
   }
-  
+
   const itemsPerPage = 4
   const totalSlides = Math.ceil(eventsData.length / itemsPerPage)
   const visibleEvents = eventsData.slice(currentSlide * itemsPerPage, (currentSlide + 1) * itemsPerPage)
-  
-  const filteredItems = selectedEvent ? 
+
+  const filteredItems = selectedEvent ?
     (currentFilter === 'all' ? selectedEvent.items : selectedEvent.items.filter((item: any) => item.status === currentFilter))
     : []
 
@@ -194,9 +194,9 @@ export default function EventHighlights() {
           <p className="text-sm sm:text-base text-brand-text-dark">Items commonly lost during MCC events and activities</p>
         </div>
         <div className="flex items-center justify-center sm:justify-end gap-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => {
               const container = document.getElementById('events-scroll-container')
               if (container) {
@@ -206,9 +206,9 @@ export default function EventHighlights() {
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => {
               const container = document.getElementById('events-scroll-container')
               if (container) {
@@ -236,8 +236,8 @@ export default function EventHighlights() {
                 </div>
                 <h3 className="text-xl font-bold mcc-text-primary mb-3 font-serif">{event.title}</h3>
                 <p className="text-brand-text-dark mb-6 line-clamp-3">{event.description}</p>
-                <Button 
-                  className="w-full bg-[#1c1b3b] text-white hover:bg-[#811c1f]" 
+                <Button
+                  className="w-full bg-[#1c1b3b] text-white hover:bg-[#811c1f]"
                   onClick={() => setSelectedEvent(event)}
                 >
                   <Users className="w-4 h-4 mr-2" />
@@ -258,7 +258,7 @@ export default function EventHighlights() {
             <span className="text-3xl">{selectedEvent?.icon}</span>
             <DialogTitle className="text-2xl mcc-text-primary">{selectedEvent?.title}</DialogTitle>
           </DialogHeader>
-          
+
           {/* Filter Tabs */}
           <div className="flex gap-2 border-b">
             {['all', 'lost', 'found'].map((filter) => (
@@ -309,15 +309,15 @@ export default function EventHighlights() {
             </Badge>
             <DialogTitle className="mcc-text-primary">{selectedItem?.name}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <h4 className="font-semibold mb-2">Item Photo</h4>
                 {selectedItem?.imageUrl ? (
-                  <img 
-                    src={selectedItem.imageUrl.startsWith('http') ? selectedItem.imageUrl : `${BACKEND_URL}${selectedItem.imageUrl}`} 
-                    alt="Item" 
+                  <img
+                    src={selectedItem.imageUrl.startsWith('http') ? selectedItem.imageUrl : `${BACKEND_URL}${selectedItem.imageUrl}`}
+                    alt="Item"
                     className="w-full h-32 object-cover rounded-lg"
                   />
                 ) : (
@@ -329,9 +329,9 @@ export default function EventHighlights() {
               <div>
                 <h4 className="font-semibold mb-2">Location Photo</h4>
                 {selectedItem?.locationImageUrl ? (
-                  <img 
-                    src={selectedItem.locationImageUrl.startsWith('http') ? selectedItem.locationImageUrl : `${BACKEND_URL}${selectedItem.locationImageUrl}`} 
-                    alt="Location" 
+                  <img
+                    src={selectedItem.locationImageUrl.startsWith('http') ? selectedItem.locationImageUrl : `${BACKEND_URL}${selectedItem.locationImageUrl}`}
+                    alt="Location"
                     className="w-full h-32 object-cover rounded-lg"
                   />
                 ) : (
@@ -341,12 +341,12 @@ export default function EventHighlights() {
                 )}
               </div>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-2">Description</h3>
               <p className="text-gray-600">{selectedItem?.description}</p>
             </div>
-            
+
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <MapPin className="w-4 h-4" />
@@ -357,7 +357,7 @@ export default function EventHighlights() {
                 <span>Date: {selectedItem?.date}</span>
               </div>
             </div>
-            
+
             <Button className="w-full bg-[#1c1b3b] text-white hover:bg-[#811c1f]" onClick={() => {
               setItemDetailModalOpen(true)
             }}>

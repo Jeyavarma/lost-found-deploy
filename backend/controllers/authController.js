@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 // @access  Public
 const register = async (req, res) => {
   try {
-        const { name, email, phone, studentId, shift, department, year, rollNumber, password } = req.body;
+    const { name, email, phone, studentId, shift, department, year, rollNumber, password } = req.body;
 
     if (!rollNumber) {
       return res.status(400).json({ message: 'Roll number is required.' });
@@ -22,12 +22,12 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'User with this email already exists.' });
     }
 
-        const existingStudentId = await db.User.findOne({ where: { studentId: { [Op.iLike]: studentId } } });
+    const existingStudentId = await db.User.findOne({ where: { studentId: { [Op.iLike]: studentId } } });
     if (existingStudentId) {
       return res.status(400).json({ message: 'User with this student ID already exists.' });
     }
 
-        const existingRollNumber = await db.User.findOne({ where: { rollNumber: { [Op.iLike]: rollNumber } } });
+    const existingRollNumber = await db.User.findOne({ where: { rollNumber: { [Op.iLike]: rollNumber } } });
     if (existingRollNumber) {
       return res.status(400).json({ message: 'User with this roll number already exists.' });
     }
@@ -46,11 +46,10 @@ const register = async (req, res) => {
     });
 
     // Generate JWT
-    const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
-    });
+    const { SessionManager } = require('../middleware/auth/sessionManager');
+    const token = SessionManager.generateToken({ id: newUser.id }, { expiresIn: '1h' });
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'User registered successfully',
       token,
       user: {
@@ -68,22 +67,21 @@ const register = async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 const login = async (req, res) => {
-      const { email, password } = req.body;
+  const { email, password } = req.body;
 
-      if (!email || !password) {
-        return res.status(400).json({ message: 'Please provide both email and password.' });
-      }
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Please provide both email and password.' });
+  }
 
   try {
     // Check for user
-        const { Op } = require('sequelize');
+    const { Op } = require('sequelize');
     const user = await db.User.findOne({ where: { email: email.toLowerCase() } });
 
     if (user && (await user.isValidPassword(password))) {
       // Create token
-      const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
-      });
+      const { SessionManager } = require('../middleware/auth/sessionManager');
+      const token = SessionManager.generateToken({ id: user.id, role: user.role }, { expiresIn: '30d' });
 
       res.json({
         id: user.id,

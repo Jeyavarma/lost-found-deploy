@@ -12,13 +12,13 @@ class SimpleCache {
   async get(key) {
     const item = this.cache.get(key);
     if (!item) return null;
-    
+
     // Check if expired
     if (Date.now() > item.expires) {
       this.delete(key);
       return null;
     }
-    
+
     return item.data;
   }
 
@@ -41,7 +41,7 @@ class SimpleCache {
     const timer = setTimeout(() => {
       this.delete(key);
     }, ttl * 1000);
-    
+
     this.timers.set(key, timer);
   }
 
@@ -81,9 +81,11 @@ class SimpleCache {
 const cache = new SimpleCache(50, 300); // 50 items max, 5 minutes default TTL
 
 // Clean up expired items every 5 minutes
-setInterval(() => {
-  cache.cleanup();
-}, 5 * 60 * 1000);
+if (process.env.NODE_ENV !== 'test') {
+  setInterval(() => {
+    cache.cleanup();
+  }, 5 * 60 * 1000);
+}
 
 // Redis-compatible interface
 const connectRedis = async () => {
@@ -99,4 +101,9 @@ const setCache = async (key, data, ttl = 300) => {
   return cache.set(key, data, ttl);
 };
 
-module.exports = { connectRedis, getCache, setCache };
+const clearCache = async () => {
+  cache.clear();
+  return Promise.resolve();
+};
+
+module.exports = { connectRedis, getCache, setCache, clearCache };

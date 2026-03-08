@@ -1,10 +1,8 @@
 // Socket.io configuration for Vercel-Render production setup
 export const SOCKET_CONFIG = {
-  // Production Render backend URL
-  serverUrl: process.env.NODE_ENV === 'production' 
-    ? 'https://lost-found-79xn.onrender.com'
-    : 'http://localhost:5000',
-    
+  // Use environment variable for backend URL with localhost fallback
+  serverUrl: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000',
+
   // Socket.io options for cross-domain
   options: {
     transports: ['websocket', 'polling'],

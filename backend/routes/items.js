@@ -5,10 +5,10 @@ const User = require('../models/User');
 const ItemTransaction = require('../models/ItemTransaction');
 const UserActivity = require('../models/UserActivity');
 const auth = require('../middleware/auth/authMiddleware');
-const upload = require('../middleware/cloudinaryUpload');
+const { upload, uploadToCloudinary } = require('../middleware/cloudinaryUpload');
 const { trackActivity } = require('../middleware/monitoring/activityTracker');
 const config = require('../config/environment');
-const { getCache, setCache } = require('../config/redis-replacement');
+const { getCache, setCache, clearCache } = require('../config/redis-replacement');
 const MatchingService = require('../services/matchingService');
 const router = express.Router();
 
@@ -20,18 +20,18 @@ router.get('/', trackActivity('search'), async (req, res) => {
     const { page = 1, limit = 20, status, category } = req.query;
     const actualLimit = Math.min(parseInt(limit), 50);
     const skip = (parseInt(page) - 1) * actualLimit;
-    
+
     const filter = {};
     if (status && status !== 'All') filter.status = status;
     if (category && category !== 'All Categories') filter.category = category;
-    
+
     // Check cache first
     const cacheKey = `items:${page}:${actualLimit}:${status || 'all'}:${category || 'all'}`;
     const cached = await getCache(cacheKey);
     if (cached) {
       return res.json(cached);
     }
-    
+
     // Parallel queries for better performance
     const [totalItems, items] = await Promise.all([
       Item.countDocuments(filter),
@@ -43,7 +43,7 @@ router.get('/', trackActivity('search'), async (req, res) => {
         .lean()
         .select('title category location status imageUrl createdAt reportedBy')
     ]);
-    
+
     const result = {
       items,
       pagination: {
@@ -53,7 +53,7 @@ router.get('/', trackActivity('search'), async (req, res) => {
         itemsPerPage: actualLimit
       }
     };
-    
+
     // Cache for 2 minutes
     await setCache(cacheKey, result, 120);
     res.json(result);
@@ -107,7 +107,7 @@ router.get('/potential-matches', auth, async (req, res) => {
     if (cached) {
       return res.json(cached);
     }
-    
+
     // Compute matches in background service
     const matches = await MatchingService.computeMatches(req.userId);
     res.json(matches);
@@ -119,18 +119,18 @@ router.get('/potential-matches', auth, async (req, res) => {
 
 const uploadFields = (req, res, next) => {
   console.log('📁 Upload middleware - Processing files...');
-  
+
   const uploadHandler = upload.fields([
     { name: 'itemImage', maxCount: 1 },
     { name: 'locationImage', maxCount: 1 }
   ]);
-  
+
   uploadHandler(req, res, (err) => {
     if (err) {
       console.error('❌ Upload error:', err);
       return res.status(400).json({ message: 'File upload error', error: err.message });
     }
-    
+
     console.log('✅ Upload completed - Files:', req.files ? Object.keys(req.files) : 'None');
     next();
   });
@@ -139,20 +139,20 @@ const uploadFields = (req, res, next) => {
 // Optional auth middleware - sets user if token is valid, but doesn't block request
 const optionalAuth = async (req, res, next) => {
   let token;
-  
+
   console.log('🔍 OptionalAuth - Headers:', req.headers.authorization ? 'Auth header present' : 'No auth header');
-  
+
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
       console.log('🔑 Token extracted, verifying...');
-      
+
       const decoded = jwt.verify(token, config.JWT_SECRET);
       console.log('✅ Token decoded, user ID:', decoded.userId || decoded.id);
-      
+
       const userId = decoded.userId || decoded.id;
       const user = await User.findById(userId).select('-password');
-      
+
       if (user) {
         req.user = user;
         req.userId = userId;
@@ -165,36 +165,36 @@ const optionalAuth = async (req, res, next) => {
       console.log('❌ Token validation failed:', error.message);
     }
   }
-  
+
   next();
 };
 
-router.post('/', uploadFields, optionalAuth, trackActivity('report_lost'), async (req, res) => {
+router.post('/', uploadFields, uploadToCloudinary, optionalAuth, trackActivity('report_lost'), async (req, res) => {
   try {
     console.log('📝 POST /api/items - Request received');
     console.log('📋 Request body keys:', Object.keys(req.body));
     console.log('📁 Files:', req.files ? Object.keys(req.files) : 'None');
-    
+
     const { contactName, contactEmail, contactPhone, date, time, status, ...otherFields } = req.body;
-    
+
     // Input validation
     if (!status || !['lost', 'found'].includes(status)) {
       console.log('❌ Invalid status:', status);
       return res.status(400).json({ message: 'Valid status (lost/found) is required' });
     }
-    
+
     if (!contactName || !contactEmail) {
       console.log('❌ Missing required fields - contactName:', !!contactName, 'contactEmail:', !!contactEmail);
       return res.status(400).json({ message: 'Contact name and email are required' });
     }
-    
+
     // Use safer email validation - prevent ReDoS
     const emailRegex = /^[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]{1,253}\.[a-zA-Z]{2,6}$/;
     if (!emailRegex.test(contactEmail)) {
       console.log('❌ Invalid email format:', contactEmail);
       return res.status(400).json({ message: 'Valid email address is required' });
     }
-    
+
     // Sanitize inputs - prevent XSS and NoSQL injection
     const sanitize = (str) => {
       if (typeof str !== 'string') return String(str);
@@ -205,27 +205,27 @@ router.post('/', uploadFields, optionalAuth, trackActivity('report_lost'), async
       contactEmail: sanitize(contactEmail),
       contactPhone: contactPhone ? sanitize(contactPhone) : undefined
     };
-    
+
     console.log('📝 Item submission - Status:', status, 'User ID:', req.userId || 'None');
-    
+
     // Business rule: Lost items require authentication, Found items can be anonymous
     if (status === 'lost' && !req.userId) {
       console.log('❌ Lost item submission blocked - no authentication');
       return res.status(401).json({ message: 'Authentication required to report lost items' });
     }
-    
+
     // Ensure all required fields are present
     const requiredFields = ['title', 'description', 'category', 'location'];
     const missingFields = requiredFields.filter(field => !otherFields[field]);
-    
+
     if (missingFields.length > 0) {
       console.log('❌ Missing required item fields:', missingFields);
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: `Missing required fields: ${missingFields.join(', ')}`,
-        missingFields 
+        missingFields
       });
     }
-    
+
     const itemData = {
       ...otherFields,
       status,
@@ -233,12 +233,12 @@ router.post('/', uploadFields, optionalAuth, trackActivity('report_lost'), async
       contactInfo: `${sanitizedData.contactName} - ${sanitizedData.contactEmail}${sanitizedData.contactPhone ? ` - ${sanitizedData.contactPhone}` : ''}`,
       dateLostFound: date ? new Date(date) : undefined,
       timeLostFound: time || undefined,
-      timeReported: new Date().toLocaleTimeString('en-IN', { 
+      timeReported: new Date().toLocaleTimeString('en-IN', {
         timeZone: 'Asia/Kolkata',
-        hour12: true 
+        hour12: true
       })
     };
-    
+
     if (req.files) {
       if (req.files.itemImage) {
         itemData.imageUrl = req.files.itemImage[0].path;
@@ -249,14 +249,17 @@ router.post('/', uploadFields, optionalAuth, trackActivity('report_lost'), async
         console.log('📍 Location image uploaded:', itemData.locationImageUrl);
       }
     }
-    
+
     console.log('💾 Creating item with data:', { ...itemData, imageUrl: itemData.imageUrl ? 'SET' : 'NONE' });
-    
+
     const item = new Item(itemData);
     await item.save();
-    
+
+    // Clear cache so the newly added item shows up immediately on Browse page
+    await clearCache();
+
     console.log('✅ Item saved successfully with ID:', item._id);
-    
+
     // Create transaction record
     if (req.userId) {
       const transaction = new ItemTransaction({
@@ -271,7 +274,7 @@ router.post('/', uploadFields, optionalAuth, trackActivity('report_lost'), async
       });
       await transaction.save();
     }
-    
+
     // Handle AI features if provided
     if (req.body.imageFeatures) {
       item.imageFeatures = req.body.imageFeatures;
@@ -283,23 +286,23 @@ router.post('/', uploadFields, optionalAuth, trackActivity('report_lost'), async
       item.aiCategory = req.body.aiCategory;
     }
     await item.save();
-    
+
     // Images stored for display only - matching uses text analysis
     console.log('ℹ️ Item saved with text-based matching enabled');
-    
+
     await item.populate('reportedBy', 'name email');
     console.log('✅ Item submission completed successfully');
     res.status(201).json({ item });
   } catch (error) {
     console.error('❌ Item submission error:', error);
     console.error('Error stack:', error.stack);
-    
+
     // Send more specific error message
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ message: 'Validation error', errors: validationErrors });
     }
-    
+
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -316,11 +319,11 @@ router.get('/events', async (req, res) => {
       'Founders Day',
       'Cultural Festival'
     ];
-    
+
     const eventData = await Promise.all(
       events.map(async (eventName) => {
         // Check both event and culturalEvent fields for backward compatibility
-        const items = await Item.find({ 
+        const items = await Item.find({
           $or: [
             { event: eventName },
             { culturalEvent: eventName }
@@ -328,10 +331,10 @@ router.get('/events', async (req, res) => {
         })
           .populate('reportedBy', 'name email')
           .sort({ createdAt: -1 });
-        
+
         const lostCount = items.filter(item => item.status === 'lost').length;
         const foundCount = items.filter(item => item.status === 'found').length;
-        
+
         return {
           name: eventName,
           totalItems: items.length,
@@ -342,7 +345,7 @@ router.get('/events', async (req, res) => {
         };
       })
     );
-    
+
     res.json(eventData.filter(event => event.totalItems > 0));
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -352,7 +355,7 @@ router.get('/events', async (req, res) => {
 router.get('/events/:eventName', async (req, res) => {
   try {
     const { eventName } = req.params;
-    const items = await Item.find({ 
+    const items = await Item.find({
       $or: [
         { event: eventName },
         { culturalEvent: eventName }
@@ -360,10 +363,10 @@ router.get('/events/:eventName', async (req, res) => {
     })
       .populate('reportedBy', 'name email')
       .sort({ createdAt: -1 });
-    
+
     const lostItems = items.filter(item => item.status === 'lost');
     const foundItems = items.filter(item => item.status === 'found');
-    
+
     res.json({
       eventName,
       totalItems: items.length,
@@ -398,6 +401,7 @@ router.put('/:id', auth, async (req, res) => {
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
+    await clearCache();
     res.json(item);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -410,13 +414,14 @@ router.delete('/:id', auth, async (req, res) => {
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
-    
+
     // Check if user owns this item
     if (item.reportedBy.toString() !== req.userId) {
       return res.status(403).json({ message: 'Not authorized to delete this item' });
     }
-    
+
     await Item.findByIdAndDelete(req.params.id);
+    await clearCache();
     res.json({ message: 'Item deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -427,29 +432,30 @@ router.delete('/:id', auth, async (req, res) => {
 router.post('/:id/claim', auth, trackActivity('claim_item'), async (req, res) => {
   try {
     const { ownershipProof, additionalInfo } = req.body;
-    
+
     const item = await Item.findById(req.params.id);
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
-    
+
     if (item.status !== 'found') {
       return res.status(400).json({ message: 'Item is not available for claiming' });
     }
-    
+
     if (item.claimedBy) {
       return res.status(400).json({ message: 'Item is already claimed' });
     }
-    
+
     item.status = 'claimed';
     item.claimedBy = req.userId;
     item.claimDate = new Date();
     item.ownershipProof = ownershipProof;
     item.additionalClaimInfo = additionalInfo;
     item.verificationStatus = 'pending';
-    
+
     await item.save();
-    
+    await clearCache();
+
     // Update transaction record
     let transaction = await ItemTransaction.findOne({ itemId: req.params.id });
     if (transaction) {
@@ -462,7 +468,7 @@ router.post('/:id/claim', auth, trackActivity('claim_item'), async (req, res) =>
       });
       await transaction.save();
     }
-    
+
     res.json({ message: 'Claim submitted successfully. Awaiting admin verification.', item });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

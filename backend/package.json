@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seedData.js",
     "seed-prod": "node seed-production.js",
-    "test": "node test-auth.js",
+    "test": "jest --detectOpenHandles",
     "autotest": "node auto-test.js",
     "add-indexes": "node scripts/createIndexes.js",
     "security-audit": "node scripts/security-audit.js",
@@ -40,6 +40,8 @@
     "validator": "^13.15.15"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "jest": "^30.2.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^7.2.2"
   }
 }

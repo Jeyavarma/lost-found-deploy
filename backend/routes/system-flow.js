@@ -34,15 +34,15 @@ router.get('/live-metrics', authMiddleware, async (req, res) => {
     // System metrics
     const systemMetrics = {
       frontend: {
-        deployment: 'Vercel',
-        url: 'https://lost-found-mcc.vercel.app',
+        deployment: process.env.NODE_ENV === 'production' ? 'Vercel' : 'Local Development',
+        url: process.env.FRONTEND_URL || 'http://localhost:3002',
         status: 'active',
         activeUsers,
         lastDeploy: new Date().toISOString()
       },
       backend: {
-        deployment: 'Render',
-        url: process.env.BACKEND_URL || 'https://lost-found-79xn.onrender.com',
+        deployment: process.env.NODE_ENV === 'production' ? 'Render' : 'Local Development',
+        url: process.env.BACKEND_URL || `http://${req.get('host')}`,
         status: 'active',
         uptime: process.uptime(),
         memoryUsage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
@@ -117,7 +117,7 @@ router.get('/health-check', async (req, res) => {
         { path: '/api/analytics', status: 'active', lastAccess: new Date() }
       ]
     }
-    
+
     res.json(healthData)
   } catch (error) {
     res.status(500).json({ error: 'Health check failed' })

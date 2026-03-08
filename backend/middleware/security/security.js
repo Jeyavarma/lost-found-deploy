@@ -62,12 +62,12 @@ const securityHeaders = (req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-DNS-Prefetch-Control', 'off');
   res.setHeader('X-Download-Options', 'noopen');
-  
+
   // Strict Transport Security (HTTPS enforcement)
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
-  
+
   // Enhanced CSP
   const csp = [
     "default-src 'self'",
@@ -75,12 +75,12 @@ const securityHeaders = (req, res, next) => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.cloudinary.com https://lost-found-79xn.onrender.com",
+    "connect-src 'self' https://api.cloudinary.com https://lost-found-79xn.onrender.com http://localhost:10000 http://10.10.54.72:10000 http://10.10.54.72:3002",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"
   ].join('; ');
-  
+
   res.setHeader('Content-Security-Policy', csp);
   next();
 };
@@ -92,20 +92,20 @@ const csrfProtection = (req, res, next) => {
     const referer = req.get('Referer');
     const userAgent = req.get('User-Agent');
     const allowedOrigins = [
-      'http://localhost:3000',
       'http://localhost:3002',
+      'http://10.10.54.72:3002',
       'https://lost-found-mcc.vercel.app',
       'https://mcc-lost-found.vercel.app',
       'https://lost-found-79xn.onrender.com'
     ];
-    
+
     // Allow requests with valid origin/referer or from browsers
     if (origin || referer || (userAgent && userAgent.includes('Mozilla'))) {
       const requestOrigin = origin || (referer && new URL(referer).origin);
-      
+
       // Also allow any vercel.app subdomain in production
       const isVercelDomain = requestOrigin && requestOrigin.match(/https:\/\/.*\.vercel\.app$/);
-      
+
       if (requestOrigin && !allowedOrigins.includes(requestOrigin) && !isVercelDomain) {
         return res.status(403).json({ error: 'Invalid origin' });
       }

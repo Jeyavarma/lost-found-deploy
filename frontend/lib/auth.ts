@@ -8,10 +8,7 @@ export interface User {
 export const AUTH_TOKEN_KEY = process.env.NEXT_PUBLIC_AUTH_TOKEN_KEY || 'mcc_auth_token'
 export const USER_DATA_KEY = process.env.NEXT_PUBLIC_USER_DATA_KEY || 'mcc_user_data'
 
-// Get backend URL from environment
-const getBackendUrl = () => {
-  return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-}
+import { BACKEND_URL } from './config'
 
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null
@@ -52,7 +49,7 @@ export function setUserData(user: User): void {
 
 export async function validateToken(token: string): Promise<boolean> {
   try {
-    const response = await fetch(`${getBackendUrl()}/api/auth/validate`, {
+    const response = await fetch(`${BACKEND_URL}/api/auth/validate`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`

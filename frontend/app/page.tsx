@@ -76,15 +76,15 @@ export default function HomePage() {
       const userData = getUserData()
       setCurrentUserId(userData?.id || '')
     }
-    
+
     const fetchItems = async () => {
       try {
         console.log('🔄 Fetching all items from backend...')
         const [itemsResponse, recentResponse] = await Promise.all([
-          fetch(`${BACKEND_URL}/api/items`),
-          fetch(`${BACKEND_URL}/api/items?sort=createdAt&order=desc&limit=10`)
+          fetch(`${BACKEND_URL}/api/items`, { signal: AbortSignal.timeout(30000) }),
+          fetch(`${BACKEND_URL}/api/items?sort=createdAt&order=desc&limit=10`, { signal: AbortSignal.timeout(30000) })
         ])
-        
+
         if (itemsResponse.ok) {
           const itemsData = await itemsResponse.json()
           // Handle both array and object responses
@@ -92,7 +92,7 @@ export default function HomePage() {
           console.log('✅ All items loaded:', items.length, 'items')
           setAllItems(items)
         }
-        
+
         if (recentResponse.ok) {
           const recentData = await recentResponse.json()
           // Handle both array and object responses
@@ -107,7 +107,7 @@ export default function HomePage() {
         setLoadingItems(false)
       }
     }
-    
+
     fetchItems()
   }, [])
 
@@ -138,7 +138,7 @@ export default function HomePage() {
       alert('Please login to start a chat')
       return
     }
-    
+
     try {
       const token = getAuthToken()
       const response = await fetch(`${BACKEND_URL}/api/chat/room/${item._id}`, {
@@ -148,7 +148,7 @@ export default function HomePage() {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (response.ok) {
         const room = await response.json()
         setSelectedItem(null)
@@ -211,8 +211,8 @@ export default function HomePage() {
                     />
                   </div>
                   <div className="flex items-center gap-2 mr-2">
-                    <Button 
-                      size="default" 
+                    <Button
+                      size="default"
                       className="mcc-accent hover:bg-red-700 text-white shadow-lg w-full sm:w-auto"
                       onClick={() => window.location.href = `/browse?search=${encodeURIComponent(searchQuery)}`}
                     >
@@ -250,10 +250,10 @@ export default function HomePage() {
               Lost Something? We've Got You Covered.
             </h2>
             <p className="text-lg md:text-xl text-gray-700 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Every day, MCC students lose valuable items across campus. From textbooks to electronics, 
+              Every day, MCC students lose valuable items across campus. From textbooks to electronics,
               we're here to reunite you with what matters most through our digital lost & found community.
             </p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
               <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
                 <div className="text-2xl font-bold text-green-600 mb-2">Instant Reports</div>
@@ -268,7 +268,7 @@ export default function HomePage() {
                 <p className="text-gray-600">Connect instantly with finders or owners through secure messaging.</p>
               </div>
             </div>
-            
+
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/report-lost">
                 <Button size="lg" className="mcc-accent hover:bg-red-700 text-white px-8 py-3 font-semibold shadow-lg">
@@ -348,9 +348,8 @@ export default function HomePage() {
                   <div className="absolute top-3 right-3 flex gap-2">
                     <Badge
                       variant={item.status === "lost" ? "destructive" : "default"}
-                      className={`shadow-lg font-medium ${
-                        item.status === "lost" ? "bg-red-500" : "bg-green-500"
-                      } text-white`}
+                      className={`shadow-lg font-medium ${item.status === "lost" ? "bg-red-500" : "bg-green-500"
+                        } text-white`}
                     >
                       {item.status === "lost" ? "Lost" : "Found"}
                     </Badge>
@@ -395,16 +394,15 @@ export default function HomePage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleLike(item._id)}
-                        className={`flex items-center gap-1 hover:bg-red-50 ${
-                          likedItems.has(item._id) ? "text-red-500" : "text-gray-500"
-                        }`}
+                        className={`flex items-center gap-1 hover:bg-red-50 ${likedItems.has(item._id) ? "text-red-500" : "text-gray-500"
+                          }`}
                       >
                         <Heart className={`w-4 h-4 ${likedItems.has(item._id) ? "fill-current" : ""}`} />
                         <span className="font-medium">{likedItems.has(item._id) ? 1 : 0}</span>
                       </Button>
                     </div>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="mcc-accent hover:bg-red-700 text-white shadow-md font-medium"
                       onClick={() => setSelectedItem(item)}
                     >
@@ -420,7 +418,7 @@ export default function HomePage() {
 
 
       </div>
-      
+
       {/* Footer */}
       <footer className="mcc-primary text-brand-text-light mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -436,7 +434,7 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="text-gray-300 mb-4 max-w-md">
-                Connecting the MCC community to reunite students with their lost belongings. 
+                Connecting the MCC community to reunite students with their lost belongings.
                 A digital platform built for Madras Christian College students, by students.
               </p>
               <div className="flex space-x-4">
@@ -447,7 +445,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-300">
@@ -457,7 +455,7 @@ export default function HomePage() {
                 <li><Link href="/feedback" className="hover:text-white transition-colors">Feedback</Link></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-4">Campus Info</h4>
               <ul className="space-y-2 text-sm text-gray-300">
@@ -468,7 +466,7 @@ export default function HomePage() {
               </ul>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-600 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-gray-300">
               © 2024 MCC Lost & Found. Made with ❤️ for Madras Christian College community.
@@ -483,14 +481,14 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-      
+
       <ItemDetailModal
         item={selectedItem}
         isOpen={!!selectedItem}
         onClose={() => setSelectedItem(null)}
         onStartChat={handleStartChat}
       />
-      
+
       <EnhancedFloatingChat />
     </div>
   )

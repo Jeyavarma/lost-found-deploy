@@ -12,6 +12,7 @@ import { ArrowLeft, MessageCircle, Star, GraduationCap } from "lucide-react"
 
 const feedbackTypes = ["Bug Report", "Feature Request", "General Feedback", "Complaint", "Suggestion", "Other"]
 const ratings = [1, 2, 3, 4, 5]
+import { api } from "@/lib/api"
 
 export default function FeedbackPage() {
   const [formData, setFormData] = useState({
@@ -27,34 +28,24 @@ export default function FeedbackPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
-      const response = await fetch('https://lost-found-79xn.onrender.com/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
+      await api.post('/api/feedback', formData)
+
+      alert('Thank you for your feedback! We appreciate your input.')
+      setFormData({
+        name: "",
+        email: "",
+        feedbackType: "",
+        rating: "",
+        subject: "",
+        message: "",
+        department: "",
+        year: ""
       })
-      
-      if (response.ok) {
-        alert('Thank you for your feedback! We appreciate your input.')
-        setFormData({
-          name: "",
-          email: "",
-          feedbackType: "",
-          rating: "",
-          subject: "",
-          message: "",
-          department: "",
-          year: ""
-        })
-      } else {
-        alert('Error submitting feedback. Please try again.')
-      }
     } catch (error) {
       console.error('Error:', error)
-      alert('Error connecting to server. Please try again.')
+      alert('Error submitting feedback. Please try again.')
     }
   }
 
@@ -105,7 +96,7 @@ export default function FeedbackPage() {
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80">
                 <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">Your Information</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="name" className="font-medium">Full Name *</Label>
@@ -162,7 +153,7 @@ export default function FeedbackPage() {
 
               <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80">
                 <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">Feedback Details</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="feedbackType" className="font-medium">Feedback Type *</Label>
@@ -238,7 +229,7 @@ export default function FeedbackPage() {
                   Submit Feedback
                 </Button>
               </div>
-              
+
               <p className="text-xs text-gray-500 text-center">
                 Your feedback helps us improve the platform for the entire MCC community.
               </p>

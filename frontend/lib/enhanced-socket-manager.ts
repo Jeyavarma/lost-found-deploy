@@ -47,22 +47,27 @@ class EnhancedSocketManager {
       this.updateConnectionState({ status: 'connecting' });
 
       try {
-        this.socket = io(BACKEND_URL, {
+        const socketOptions: any = {
           auth: { token },
-          transports: ['websocket', 'polling'],
-          timeout: 10000,
+          // Force WebSocket to prevent polling errors spamming the terminal during development testing
+          transports: ['websocket'],
+          timeout: 20000,
           forceNew: true,
           withCredentials: true,
-          autoConnect: true,
-          reconnection: false // We handle reconnection manually
-        });
+          // Don't auto connect on load so the user can test without log spam
+          autoConnect: false,
+          reconnection: false, // We handle reconnection manually
+          reconnectionAttempts: 3,
+        };
+        socketOptions.path = '/api/socket.io';
+        this.socket = io('', socketOptions);
 
         this.setupEventListeners();
         resolve(this.socket);
       } catch (error) {
-        this.updateConnectionState({ 
-          status: 'error', 
-          error: error instanceof Error ? error.message : 'Connection failed' 
+        this.updateConnectionState({
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Connection failed'
         });
         resolve(null);
       }
@@ -73,8 +78,8 @@ class EnhancedSocketManager {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      this.updateConnectionState({ 
-        status: 'connected', 
+      this.updateConnectionState({
+        status: 'connected',
         lastConnected: Date.now(),
         retryCount: 0,
         error: undefined
@@ -88,15 +93,15 @@ class EnhancedSocketManager {
       this.updateConnectionState({ status: 'disconnected' });
       this.stopHealthCheck();
       this.emit('connection_lost', reason);
-      
+
       if (reason !== 'io client disconnect') {
         this.scheduleReconnect();
       }
     });
 
     this.socket.on('connect_error', (error) => {
-      this.updateConnectionState({ 
-        status: 'error', 
+      this.updateConnectionState({
+        status: 'error',
         error: error.message,
         retryCount: this.connectionState.retryCount + 1
       });
@@ -118,9 +123,9 @@ class EnhancedSocketManager {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
 
     const delay = Math.min(this.baseDelay * Math.pow(2, this.connectionState.retryCount), 30000);
-    
+
     this.updateConnectionState({ status: 'reconnecting' });
-    
+
     this.reconnectTimer = setTimeout(() => {
       this.connect();
     }, delay);
@@ -128,7 +133,7 @@ class EnhancedSocketManager {
 
   private startHealthCheck() {
     if (this.healthCheckTimer) clearInterval(this.healthCheckTimer);
-    
+
     this.healthCheckTimer = setInterval(() => {
       if (this.socket?.connected) {
         this.socket.emit('ping');
@@ -146,7 +151,7 @@ class EnhancedSocketManager {
   // Message handling with offline support
   sendMessage(roomId: string, content: string, type: 'text' | 'image' = 'text'): string {
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const queuedMessage: QueuedMessage = {
       id: messageId,
       roomId,
@@ -158,7 +163,7 @@ class EnhancedSocketManager {
     };
 
     this.messageQueue.push(queuedMessage);
-    
+
     if (this.isConnected()) {
       this.sendQueuedMessage(queuedMessage);
     }
@@ -170,11 +175,11 @@ class EnhancedSocketManager {
     if (!this.socket?.connected) return;
 
     message.status = 'sending';
-    
+
     try {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('Send timeout')), 10000);
-        
+
         this.socket!.emit('send_message', {
           messageId: message.id,
           roomId: message.roomId,
@@ -193,7 +198,7 @@ class EnhancedSocketManager {
     } catch (error) {
       message.status = 'failed';
       message.retryCount++;
-      
+
       if (message.retryCount < 3) {
         setTimeout(() => this.sendQueuedMessage(message), 5000);
       }
@@ -202,7 +207,7 @@ class EnhancedSocketManager {
 
   private processMessageQueue() {
     const pendingMessages = this.messageQueue.filter(m => m.status === 'pending' || m.status === 'failed');
-    
+
     pendingMessages.forEach(message => {
       if (message.retryCount < 3) {
         this.sendQueuedMessage(message);
@@ -261,7 +266,7 @@ class EnhancedSocketManager {
   }
 
   getPendingMessages(roomId?: string): QueuedMessage[] {
-    return this.messageQueue.filter(m => 
+    return this.messageQueue.filter(m =>
       (m.status === 'pending' || m.status === 'failed') &&
       (!roomId || m.roomId === roomId)
     );
@@ -271,12 +276,12 @@ class EnhancedSocketManager {
   disconnect() {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.healthCheckTimer) clearInterval(this.healthCheckTimer);
-    
+
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
-    
+
     this.updateConnectionState({ status: 'disconnected' });
   }
 

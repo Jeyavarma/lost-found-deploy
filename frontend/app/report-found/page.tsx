@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Image from "next/image"
 import { ArrowLeft, Upload, Search, User, GraduationCap, CheckCircle, Home } from "lucide-react"
 import Navigation from "@/components/layout/navigation"
+import { api } from "@/lib/api"
 
 const categories = ["ID Card", "Mobile Phone", "Laptop", "Wallet", "Keys", "Books", "Clothing", "Jewelry", "Other"]
 
@@ -51,7 +52,7 @@ const departments = [
 
 const hostels = [
   "Bishop Heber Hall",
-  "Selaiyur Hall", 
+  "Selaiyur Hall",
   "St. Thomas's Hall",
   "Barnes Hall",
   "Martin Hall",
@@ -77,8 +78,8 @@ export default function ReportFoundPage() {
 
   const [itemImage, setItemImage] = useState<File | null>(null)
   const [locationImage, setLocationImage] = useState<File | null>(null)
-  const [itemImagePreview, setItemImagePreview] = useState<string>("") 
-  const [locationImagePreview, setLocationImagePreview] = useState<string>("") 
+  const [itemImagePreview, setItemImagePreview] = useState<string>("")
+  const [locationImagePreview, setLocationImagePreview] = useState<string>("")
   const [hasCulturalEvent, setHasCulturalEvent] = useState(false)
 
   // Check if user is authenticated
@@ -87,7 +88,7 @@ export default function ReportFoundPage() {
       const { isAuthenticated: checkIsAuth, getAuthToken, validateToken } = await import('@/lib/auth')
       const authenticated = checkIsAuth()
       const token = getAuthToken()
-      
+
       if (authenticated && token) {
         // Validate token with backend
         const isValid = await validateToken(token)
@@ -106,7 +107,7 @@ export default function ReportFoundPage() {
         setShowOptionalLogin(true)
       }
     }
-    
+
     checkAuth()
   }, [])
 
@@ -129,71 +130,71 @@ export default function ReportFoundPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Prevent double submission
     if (isSubmitting) return
-    
+
     // Validate required fields
     if (!itemImage) {
       alert('Please upload an image of the item')
       return
     }
-    
+
     if (!formData.title.trim()) {
       alert('Please enter the item name')
       return
     }
-    
+
     if (!formData.category) {
       alert('Please select a category')
       return
     }
-    
+
     if (formData.category === 'Other' && !formData.categoryOther.trim()) {
       alert('Please specify the category')
       return
     }
-    
+
     if (!formData.description.trim()) {
       alert('Please enter a description')
       return
     }
-    
+
     if (!formData.location.trim()) {
       alert('Please enter where the item was found')
       return
     }
-    
+
     if (!formData.date) {
       alert('Please select the date when the item was found')
       return
     }
-    
+
     if (!formData.currentLocation.trim()) {
       alert('Please enter where the item is currently located')
       return
     }
-    
+
     if (!formData.contactName.trim()) {
       alert('Please enter your name')
       return
     }
-    
+
     if (!formData.contactEmail.trim()) {
       alert('Please enter your email address')
       return
     }
-    
+
     setIsSubmitting(true)
-    
+
     const submitData = new FormData()
     submitData.append('status', 'found')
-    
+
     // Add all form fields
     Object.entries(formData).forEach(([key, value]) => {
       if (value) submitData.append(key, value)
     })
-    
+
     // Add images - this is required
     if (itemImage) {
       submitData.append('itemImage', itemImage)
@@ -202,11 +203,11 @@ export default function ReportFoundPage() {
       setIsSubmitting(false)
       return
     }
-    
+
     if (locationImage) {
       submitData.append('locationImage', locationImage)
     }
-    
+
     // Get auth token if user is authenticated
     let authHeaders = {}
     if (isAuthenticated) {
@@ -216,24 +217,24 @@ export default function ReportFoundPage() {
         authHeaders = { 'Authorization': `Bearer ${token}` }
       }
     }
-    
+
     console.log('🔵 FOUND ITEM REQUEST - Sending to backend:')
     const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/items` : '/api/items'
     console.log('📍 URL:', apiUrl)
     console.log('📝 Method: POST')
     console.log('🔐 Auth:', isAuthenticated ? 'With Token' : 'Anonymous')
-    console.log('🔑 Auth Headers:', authHeaders)
     console.log('📋 Form Data entries:', Object.fromEntries(submitData.entries()))
-    
+
     try {
-      const response = await fetch(apiUrl, {
+      // Bypass the standard Next.js JSON api proxy and use our dedicated Upload Streaming Proxy
+      const response = await fetch('/api/proxy-upload', {
         method: 'POST',
         headers: authHeaders,
         body: submitData
       })
-      
-      console.log('✅ FOUND ITEM RESPONSE:', response.status, response.statusText)
-      
+
+      console.log('✅ FOUND ITEM RESPONSE:', response)
+
       if (response.ok) {
         setShowSuccess(true)
         // Trigger data refresh by dispatching a custom event
@@ -242,12 +243,12 @@ export default function ReportFoundPage() {
           window.location.href = isAuthenticated ? '/dashboard' : '/'
         }, 3000)
       } else {
-        console.error('❌ Backend error:', await response.text())
+        console.error('❌ Backend logic error')
         alert('Error submitting report. Please try again.')
       }
-    } catch (error) {
-      console.error('❌ Network error:', error)
-      alert('Error connecting to server. Please try again.')
+    } catch (error: any) {
+      console.error('❌ Network or Server error:', error)
+      alert(`Error connecting to server: ${error.message || 'Please check your internet connection'}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -258,24 +259,24 @@ export default function ReportFoundPage() {
     if (field === 'time' && formData.date) {
       const today = new Date().toISOString().split('T')[0]
       const currentTime = new Date().toTimeString().slice(0, 5)
-      
+
       if (formData.date === today && value > currentTime) {
         alert('Cannot select a future time for today. Please select a time that has already passed.')
         return
       }
     }
-    
+
     // Validate date and reset time if date changes to today with future time
     if (field === 'date') {
       const today = new Date().toISOString().split('T')[0]
       const currentTime = new Date().toTimeString().slice(0, 5)
-      
+
       if (value === today && formData.time > currentTime) {
         setFormData(prev => ({ ...prev, [field]: value, time: '' }))
         return
       }
     }
-    
+
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -299,12 +300,12 @@ export default function ReportFoundPage() {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')!
       const img = new window.Image()
-      
+
       img.onload = () => {
         const maxWidth = 600
         const maxHeight = 400
         let { width, height } = img
-        
+
         if (width > height) {
           if (width > maxWidth) {
             height = (height * maxWidth) / width
@@ -316,11 +317,11 @@ export default function ReportFoundPage() {
             height = maxHeight
           }
         }
-        
+
         canvas.width = width
         canvas.height = height
         ctx.drawImage(img, 0, 0, width, height)
-        
+
         canvas.toBlob((blob) => {
           const compressedFile = new File([blob!], file.name, {
             type: 'image/jpeg',
@@ -329,7 +330,7 @@ export default function ReportFoundPage() {
           resolve(compressedFile)
         }, 'image/jpeg', 0.7)
       }
-      
+
       img.src = URL.createObjectURL(file)
     })
   }
@@ -376,9 +377,9 @@ export default function ReportFoundPage() {
                     Login
                   </Button>
                 </Link>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => setShowOptionalLogin(false)}
                   className="border-green-600 text-green-600 hover:bg-green-50"
                 >
@@ -435,7 +436,7 @@ export default function ReportFoundPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      
+
                       {formData.category === "Other" && (
                         <Input
                           value={formData.categoryOther}
@@ -468,7 +469,7 @@ export default function ReportFoundPage() {
                 <div className="border-t border-gray-200/80 pt-6 mt-6">
                   <Label className="font-medium mb-4 block">Upload Images</Label>
                   <p className="text-xs text-gray-500 mb-4">Photos help identify the item and location.</p>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Item Photo */}
                     <div>
@@ -488,16 +489,16 @@ export default function ReportFoundPage() {
                             </>
                           )}
                         </div>
-                        <Input 
-                          id="itemImage" 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp" 
+                        <Input
+                          id="itemImage"
+                          type="file"
+                          className="hidden"
+                          accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp"
                           onChange={(e) => handleImageChange(e, 'item')}
                         />
                       </label>
                     </div>
-                    
+
                     {/* Location Photo */}
                     <div>
                       <Label className="text-sm font-medium mb-2 block">Location Photo (Optional)</Label>
@@ -516,11 +517,11 @@ export default function ReportFoundPage() {
                             </>
                           )}
                         </div>
-                        <Input 
-                          id="locationImage" 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp" 
+                        <Input
+                          id="locationImage"
+                          type="file"
+                          className="hidden"
+                          accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp"
                           onChange={(e) => handleImageChange(e, 'location')}
                         />
                       </label>
@@ -531,7 +532,7 @@ export default function ReportFoundPage() {
 
               <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80">
                 <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">2. Where & When It Was Found</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-1">
                     <Label htmlFor="location" className="font-medium">Found Location <span className="text-red-500">*</span></Label>
@@ -612,7 +613,7 @@ export default function ReportFoundPage() {
                         />
                         <Label htmlFor="hasCulturalEvent" className="text-sm">Yes, found during a cultural event</Label>
                       </div>
-                      
+
                       {hasCulturalEvent && (
                         <div className="space-y-3">
                           <Select value={formData.culturalEvent} onValueChange={handleCulturalEventSelect}>
@@ -627,7 +628,7 @@ export default function ReportFoundPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          
+
                           {formData.culturalEvent === "Other" && (
                             <Input
                               value={formData.culturalEventOther}
@@ -644,7 +645,7 @@ export default function ReportFoundPage() {
 
               <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80">
                 <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">3. Your Contact Information</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-1">
                     <Label htmlFor="contactName" className="font-medium">Your Name <span className="text-red-500">*</span></Label>
@@ -696,16 +697,15 @@ export default function ReportFoundPage() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`px-8 py-3 font-medium rounded-lg shadow-lg ${
-                    isSubmitting
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-green-600 hover:bg-green-700 text-white'
-                  }`}
+                  className={`px-8 py-3 font-medium rounded-lg shadow-lg ${isSubmitting
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                    }`}
                 >
                   {isSubmitting ? 'Submitting...' : 'Report Found Item'}
                 </Button>
               </div>
-              
+
               <p className="text-xs text-gray-500 text-center">
                 By submitting, you agree to be contacted by the item's owner.
               </p>

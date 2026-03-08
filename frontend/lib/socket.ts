@@ -25,13 +25,13 @@ class SocketManager {
     try {
       const socketOptions: any = {
         auth: { token },
-        transports: ['polling', 'websocket'], // Polling first for better compatibility
+        transports: ['websocket'], // Force WebSocket to prevent polling errors in terminal
         timeout: 30000,
         forceNew: false,
         withCredentials: true,
         upgrade: true,
         rememberUpgrade: false, // Don't remember upgrade for cross-domain
-        autoConnect: true,
+        autoConnect: false, // Prevent automatic connection on load
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
@@ -45,7 +45,8 @@ class SocketManager {
         socketOptions.transports = ['polling']; // Use polling only in production
       }
 
-      this.socket = io(BACKEND_URL, socketOptions);
+      socketOptions.path = '/api/socket.io'; // Force connection through Next.js proxy
+      this.socket = io('', socketOptions); // Empty string tells socket.io to connect to the host serving the page (Next.js)
 
       this.socket.on('connect', () => {
         console.log('✅ Chat connected to:', BACKEND_URL);
@@ -138,13 +139,13 @@ class SocketManager {
 
   // Send message with offline queue support
   sendMessage(
-    roomId: string, 
-    content: string, 
+    roomId: string,
+    content: string,
     type: 'text' | 'image' = 'text',
     callback?: (status: 'sent' | 'failed') => void
   ): string {
     const messageId = messageQueue.addMessage(roomId, content, type);
-    
+
     if (callback) {
       this.messageCallbacks.set(messageId, callback);
     }
@@ -159,14 +160,14 @@ class SocketManager {
   // Process all queued messages when connection is restored
   private async processQueuedMessages() {
     if (this.processingQueue || !this.isConnected()) return;
-    
+
     this.processingQueue = true;
     const pendingMessages = messageQueue.getAllPending();
-    
+
     if (pendingMessages.length > 0) {
       console.log(`Processing ${pendingMessages.length} queued messages`);
     }
-    
+
     for (const message of pendingMessages) {
       try {
         await this.sendQueuedMessage(message);
@@ -177,7 +178,7 @@ class SocketManager {
         messageQueue.markAsFailed(message.id);
       }
     }
-    
+
     this.processingQueue = false;
     if (pendingMessages.length > 0) {
       console.log('Finished processing queued messages');
@@ -202,13 +203,13 @@ class SocketManager {
       }
 
       messageQueue.updateStatus(message.id, 'sending');
-      
+
       // Set timeout for message sending
       const timeout = setTimeout(() => {
         messageQueue.markAsFailed(message.id);
         reject(new Error('Message send timeout'));
       }, 10000); // 10 second timeout
-      
+
       // Listen for delivery confirmation
       const onDelivered = (data: { messageId: string }) => {
         if (data.messageId === message.id) {
@@ -218,7 +219,7 @@ class SocketManager {
           resolve();
         }
       };
-      
+
       const onFailed = (data: { messageId: string }) => {
         if (data.messageId === message.id) {
           clearTimeout(timeout);
@@ -227,10 +228,10 @@ class SocketManager {
           reject(new Error('Message send failed'));
         }
       };
-      
+
       this.socket.on('message_delivered', onDelivered);
       this.socket.on('message_failed', onFailed);
-      
+
       this.socket.emit('send_message', {
         messageId: message.id,
         roomId: message.roomId,

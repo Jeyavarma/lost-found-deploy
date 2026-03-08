@@ -30,14 +30,15 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
+    origin: process.env.NODE_ENV === 'production'
       ? [
-          'https://lost-found-mcc.vercel.app',
-          'https://mcc-lost-found.vercel.app', 
-          'https://lost-found-79xn.onrender.com',
-          /\.vercel\.app$/
-        ]
-      : ['http://localhost:3000', 'http://localhost:3002'],
+        'https://lost-found-mcc.vercel.app',
+        'https://mcc-lost-found.vercel.app',
+        'https://lost-found-79xn.onrender.com',
+        'https://lost-found-ashen.vercel.app',
+        /\.vercel\.app$/
+      ]
+      : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3001'],
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -62,56 +63,48 @@ app.use('/api/items/events', cacheMiddleware(300000)); // 5 minutes
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    },
-  },
+  contentSecurityPolicy: false, // Handled in securityHeaders middleware
 }));
-app.use(securityHeaders);
-app.use(csrfProtection);
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
       'https://lost-found-mcc.vercel.app',
-      'https://mcc-lost-found.vercel.app', 
-      'https://lost-found-79xn.onrender.com'
-    ];
-    
-    // Development origins
-    const devOrigins = [
-      'http://localhost:3000',
+      'https://mcc-lost-found.vercel.app',
+      'https://lost-found-79xn.onrender.com',
+      'https://lost-found-ashen.vercel.app',
       'http://localhost:3002',
-      'http://localhost:3001'
+      'http://localhost:3000',
+      'http://10.10.54.72:3002',
+      'http://10.10.54.72:3000',
+      ...(config.CORS_ORIGINS || [])
     ];
-    
+
     // Strict origin checking in production
     if (config.NODE_ENV === 'production') {
       // No origin for mobile apps/Postman - allow if no origin
       if (!origin) {
         return callback(null, true);
       }
-      
+
       // Only allow exact matches or verified Vercel subdomains
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      
-      // Strict Vercel subdomain validation
-      if (origin.match(/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/)) {
+
+      // Check for Vercel preview or other subdomains if not exact match
+      const isVercelSubdomain = origin.match(/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/);
+      if (isVercelSubdomain) {
         return callback(null, true);
       }
-      
-      return callback(new Error('Not allowed by CORS'));
+
+      console.warn(`⚠️ CORS block: Origin ${origin} is not in allowed list`);
+      return callback(null, false);
     } else {
       // Development - allow dev origins and no origin
-      if (!origin || devOrigins.includes(origin) || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+      return callback(null, false);
     }
   },
   credentials: true,
@@ -120,7 +113,14 @@ app.use(cors({
   exposedHeaders: ['X-Request-ID'],
   maxAge: 86400 // 24 hours preflight cache
 }));
+app.use(securityHeaders);
+app.use(csrfProtection);
 app.use(express.json({ limit: '10mb' }));
+
+app.use('/api/auth/register', (req, res, next) => {
+  console.log(`🌐 Received ${req.method} request to /api/auth/register from Origin: ${req.get('Origin')}`);
+  next();
+});
 
 mongoose.connect(config.MONGODB_URI)
   .then(() => {
@@ -141,7 +141,7 @@ app.post('/api/auth/create-first-admin', express.json(), async (req, res) => {
   try {
     const User = require('./models/User');
     const jwt = require('jsonwebtoken');
-    
+
     const existingAdmin = await User.findOne({ role: 'admin' });
     if (existingAdmin) {
       return res.status(400).json({ message: 'Admin account already exists' });
@@ -160,8 +160,9 @@ app.post('/api/auth/create-first-admin', express.json(), async (req, res) => {
     const user = new User({ name, email, password, role: 'admin' });
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, config.JWT_SECRET, { expiresIn: '7d' });
-    
+    const { SessionManager } = require('./middleware/auth/sessionManager');
+    const token = SessionManager.generateToken({ userId: user._id });
+
     res.status(201).json({
       message: 'Admin created successfully',
       token,
@@ -250,7 +251,7 @@ app.get('/api/users/search', authMiddleware, async (req, res) => {
     if (!q || q.trim().length < 2) {
       return res.status(400).json({ error: 'Search query too short' });
     }
-    
+
     const searchRegex = new RegExp(q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     const users = await User.find({
       $and: [
@@ -258,7 +259,7 @@ app.get('/api/users/search', authMiddleware, async (req, res) => {
         { $or: [{ name: searchRegex }, { email: searchRegex }] }
       ]
     }).select('name email role').limit(20).sort({ name: 1 });
-    
+
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: 'Search failed' });
@@ -275,15 +276,20 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`💬 Socket.io chat enabled`);
-  console.log(`🧹 Message cleanup job started`);
-  console.log(`📊 Performance monitoring active`);
-  console.log(`🛡️  Security middleware loaded`);
-  console.log(`✅ System ready`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`💬 Socket.io chat enabled`);
+    console.log(`🧹 Message cleanup job started`);
+    console.log(`📊 Performance monitoring active`);
+    console.log(`🛡️  Security middleware loaded`);
+    console.log(`✅ System ready`);
+  });
+}
+
+// Export the Express app for testing purposes
+module.exports = app;
 
 // Setup graceful shutdown
 gracefulShutdown(server);

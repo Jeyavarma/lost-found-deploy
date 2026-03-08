@@ -22,8 +22,7 @@ const messageSchema = new mongoose.Schema({
     default: 'text'
   },
   clientMessageId: {
-    type: String,
-    index: true
+    type: String
   },
   deliveryStatus: {
     type: String,
