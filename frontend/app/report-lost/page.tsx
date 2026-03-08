@@ -14,6 +14,7 @@ import { ArrowLeft, Upload, User, GraduationCap, CheckCircle, Home } from "lucid
 import Image from "next/image"
 import Navigation from "@/components/layout/navigation"
 import { api } from "@/lib/api"
+import { toast } from "sonner"
 
 const categories = ["ID Card", "Mobile Phone", "Laptop", "Wallet", "Keys", "Books", "Clothing", "Jewelry", "Other"]
 
@@ -38,6 +39,8 @@ export default function ReportLostPage() {
   const [locationImage, setLocationImage] = useState<File | null>(null)
   const [itemImagePreview, setItemImagePreview] = useState<string>("")
   const [locationImagePreview, setLocationImagePreview] = useState<string>("")
+  const [isCompressingItem, setIsCompressingItem] = useState(false)
+  const [isCompressingLocation, setIsCompressingLocation] = useState(false)
   const [hasCulturalEvent, setHasCulturalEvent] = useState(false)
 
   // Check if user is authenticated
@@ -99,14 +102,14 @@ export default function ReportLostPage() {
 
     // Check authentication requirement for lost items
     if (!isAuthenticated) {
-      alert('Please login to report a lost item. This helps us track your reports and notify you when items are found.')
-      window.location.href = '/login'
+      toast.error('Please login to report a lost item. This helps us track your reports and notify you when items are found.')
+      window.location.href = `/login?returnUrl=/report-lost`
       return
     }
 
     // Validate required fields
     if (!formData.title || !formData.category || !formData.description || !formData.location || !formData.date || !formData.contactName || !formData.contactEmail) {
-      alert('Please fill in all required fields marked with *')
+      toast.error('Please fill in all required fields marked with *')
       return
     }
 
@@ -158,11 +161,11 @@ export default function ReportLostPage() {
         }, 3000)
       } else {
         console.error('❌ Backend logic error')
-        alert('Error submitting report. Please try again.')
+        toast.error('Error submitting report. Please try again.')
       }
     } catch (error: any) {
       console.error('❌ Network or Server error:', error)
-      alert(`Error connecting to server: ${error.message || 'Please check your internet connection'}`)
+      toast.error(`Error connecting to server: ${error.message || 'Please check your internet connection'}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -175,7 +178,7 @@ export default function ReportLostPage() {
       const currentTime = new Date().toTimeString().slice(0, 5)
 
       if (formData.date === today && value > currentTime) {
-        alert('Cannot select a future time for today. Please select a time that has already passed.')
+        toast.error('Cannot select a future time for today. Please select a time that has already passed.')
         return
       }
     }
@@ -252,18 +255,34 @@ export default function ReportLostPage() {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'item' | 'location') => {
     const file = e.target.files?.[0]
     if (file) {
-      const compressedFile = await compressImage(file)
-      const reader = new FileReader()
-      reader.onload = () => {
+      if (type === 'item') {
+        setIsCompressingItem(true)
+      } else {
+        setIsCompressingLocation(true)
+      }
+
+      try {
+        const compressedFile = await compressImage(file)
+        const reader = new FileReader()
+        reader.onload = () => {
+          if (type === 'item') {
+            setItemImage(compressedFile)
+            setItemImagePreview(reader.result as string)
+          } else {
+            setLocationImage(compressedFile)
+            setLocationImagePreview(reader.result as string)
+          }
+        }
+        reader.readAsDataURL(compressedFile)
+      } catch (error) {
+        toast.error('Failed to process image')
+      } finally {
         if (type === 'item') {
-          setItemImage(compressedFile)
-          setItemImagePreview(reader.result as string)
+          setIsCompressingItem(false)
         } else {
-          setLocationImage(compressedFile)
-          setLocationImagePreview(reader.result as string)
+          setIsCompressingLocation(false)
         }
       }
-      reader.readAsDataURL(compressedFile)
     }
   }
 
@@ -285,7 +304,7 @@ export default function ReportLostPage() {
             </CardHeader>
             <CardContent className="p-4">
               <div className="flex gap-3">
-                <Link href="/login">
+                <Link href="/login?returnUrl=/report-lost">
                   <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white">
                     <User className="w-4 h-4 mr-2" />
                     Login to Continue
@@ -400,7 +419,12 @@ export default function ReportLostPage() {
                       <Label className="text-sm font-medium mb-2 block">Item Photo <span className="text-red-500">*</span></Label>
                       <label htmlFor="itemImage" className="cursor-pointer block">
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-brand-primary transition-colors">
-                          {itemImagePreview ? (
+                          {isCompressingItem ? (
+                            <div className="flex flex-col items-center justify-center h-32">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
+                              <p className="text-sm text-gray-500">Processing image...</p>
+                            </div>
+                          ) : itemImagePreview ? (
                             <>
                               <Image src={itemImagePreview} alt="Item Preview" className="h-32 w-full object-cover rounded-lg mb-2" width={200} height={128} />
                               <p className="text-xs text-gray-500">Click to change</p>
@@ -428,7 +452,12 @@ export default function ReportLostPage() {
                       <Label className="text-sm font-medium mb-2 block">Location Photo (Optional)</Label>
                       <label htmlFor="locationImage" className="cursor-pointer block">
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-brand-primary transition-colors">
-                          {locationImagePreview ? (
+                          {isCompressingLocation ? (
+                            <div className="flex flex-col items-center justify-center h-32">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-2"></div>
+                              <p className="text-sm text-gray-500">Processing image...</p>
+                            </div>
+                          ) : locationImagePreview ? (
                             <>
                               <Image src={locationImagePreview} alt="Location Preview" className="h-32 w-full object-cover rounded-lg mb-2" width={200} height={128} />
                               <p className="text-xs text-gray-500">Click to change</p>
@@ -604,8 +633,8 @@ export default function ReportLostPage() {
               <div className="flex justify-center pt-6">
                 <Button
                   type="submit"
-                  disabled={!isAuthenticated || isSubmitting}
-                  className={`px-8 py-3 font-medium rounded-lg shadow-lg ${isAuthenticated && !isSubmitting
+                  disabled={!isAuthenticated || isSubmitting || isCompressingItem || isCompressingLocation}
+                  className={`px-8 py-3 font-medium rounded-lg shadow-lg ${isAuthenticated && !(isSubmitting || isCompressingItem || isCompressingLocation)
                     ? 'bg-red-600 hover:bg-red-700 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}

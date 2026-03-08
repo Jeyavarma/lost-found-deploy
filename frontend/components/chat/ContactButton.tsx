@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { MessageCircle } from 'lucide-react'
 import { BACKEND_URL } from '@/lib/config'
 import { getAuthToken } from '@/lib/auth'
+import { toast } from 'sonner'
 
 interface ContactButtonProps {
   itemId: string
@@ -18,8 +19,8 @@ export default function ContactButton({ itemId, itemTitle, onChatCreated }: Cont
   const handleContact = async () => {
     const token = getAuthToken()
     if (!token) {
-      alert('Please login to start a conversation')
-      window.location.href = '/login'
+      toast.error('Please login to start a conversation')
+      window.location.href = `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`
       return
     }
 
@@ -35,34 +36,34 @@ export default function ContactButton({ itemId, itemTitle, onChatCreated }: Cont
       })
 
       console.log('Response status:', response.status)
-      
+
       if (response.ok) {
         const room = await response.json()
         console.log('Chat room created:', room)
         onChatCreated?.(room._id)
-        
+
         // Dispatch event to open floating chat
-        window.dispatchEvent(new CustomEvent('openChat', { 
-          detail: { roomId: room._id, room } 
+        window.dispatchEvent(new CustomEvent('openChat', {
+          detail: { roomId: room._id, room }
         }))
-        
+
         // Show success message
-        alert('Chat started! Check the chat window.')
+        toast.success('Chat started! Check the chat window.')
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         console.error('Chat creation failed:', errorData)
-        alert(errorData.error || 'Failed to start conversation')
+        toast.error(errorData.error || 'Failed to start conversation')
       }
     } catch (error) {
       console.error('Contact error:', error)
-      alert('Network error. Please check your connection and try again.')
+      toast.error('Network error. Please check your connection and try again.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Button 
+    <Button
       onClick={handleContact}
       disabled={loading}
       className="bg-blue-600 hover:bg-blue-700 text-white"

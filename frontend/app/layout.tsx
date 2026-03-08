@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   generator: 'Next.js',
 }
 
+import { Toaster } from 'sonner'
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,6 +33,7 @@ html {
         <PresenceProvider>
           {children}
           <ImprovedFloatingChat />
+          <Toaster richColors position="top-right" />
         </PresenceProvider>
       </body>
     </html>

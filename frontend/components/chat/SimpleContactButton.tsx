@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { MessageCircle } from 'lucide-react'
 import { BACKEND_URL } from '@/lib/config'
 import { isAuthenticated, getAuthToken } from '@/lib/auth'
+import { toast } from 'sonner'
 
 interface SimpleContactButtonProps {
   itemId: string
@@ -17,13 +18,13 @@ export default function SimpleContactButton({ itemId, itemTitle }: SimpleContact
   const handleContact = async () => {
     // Check authentication
     if (!isAuthenticated()) {
-      alert('Please login to start a conversation')
-      window.location.href = '/login'
+      toast.error('Please login to start a conversation')
+      window.location.href = `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`
       return
     }
 
     setLoading(true)
-    
+
     try {
       const token = getAuthToken()
       console.log('Token:', token ? 'Present' : 'Missing')
@@ -44,34 +45,34 @@ export default function SimpleContactButton({ itemId, itemTitle }: SimpleContact
       if (response.ok) {
         const room = await response.json()
         console.log('Room created:', room)
-        
+
         // Open floating chat
-        window.dispatchEvent(new CustomEvent('openChat', { 
-          detail: { roomId: room._id, room } 
+        window.dispatchEvent(new CustomEvent('openChat', {
+          detail: { roomId: room._id, room }
         }))
-        
-        alert('Chat started successfully!')
+
+        toast.success('Chat started successfully!')
       } else {
         const errorText = await response.text()
         console.error('Error response:', errorText)
-        
+
         try {
           const errorData = JSON.parse(errorText)
-          alert(`Error: ${errorData.error || 'Failed to start conversation'}`)
+          toast.error(`Error: ${errorData.error || 'Failed to start conversation'}`)
         } catch {
-          alert(`Error: ${response.status} - ${errorText}`)
+          toast.error(`Error: ${response.status} - ${errorText}`)
         }
       }
     } catch (error) {
       console.error('Network error:', error)
-      alert('Network error. Please check your connection.')
+      toast.error('Network error. Please check your connection.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Button 
+    <Button
       onClick={handleContact}
       disabled={loading}
       className="bg-blue-600 hover:bg-blue-700 text-white"

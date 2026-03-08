@@ -7,12 +7,12 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { 
-  Brain, 
-  Upload, 
-  Search, 
-  Eye, 
-  Zap, 
+import {
+  Brain,
+  Upload,
+  Search,
+  Eye,
+  Zap,
   Camera,
   X,
   CheckCircle,
@@ -21,6 +21,7 @@ import {
 import { processImage, processImageFromUrl, calculateSimilarity, suggestCategoryFromObjects, initializeModels } from '@/lib/visual-ai'
 import { BACKEND_URL } from '@/lib/config'
 import { getAuthToken } from '@/lib/auth'
+import { toast } from 'sonner'
 
 interface VisualMatch {
   item: any
@@ -53,7 +54,7 @@ export default function VisualAISearch() {
 
   const loadModels = async () => {
     if (modelsReady) return
-    
+
     setModelLoading(true)
     try {
       await initializeModels()
@@ -67,7 +68,7 @@ export default function VisualAISearch() {
 
   const performVisualSearch = async () => {
     if (!selectedImage && !searchQuery.trim()) {
-      alert('Please upload an image or enter a search query')
+      toast.error('Please upload an image or enter a search query')
       return
     }
 
@@ -84,7 +85,7 @@ export default function VisualAISearch() {
         imageFeatures = result.features
         objects = result.objects
         aiCategory = suggestCategoryFromObjects(objects)
-        
+
         setDetectedObjects(objects)
         setSuggestedCategory(aiCategory)
       }
@@ -92,7 +93,7 @@ export default function VisualAISearch() {
       // Get all items for comparison
       const response = await fetch(`${BACKEND_URL}/api/items`)
       if (!response.ok) throw new Error('Failed to fetch items')
-      
+
       const allItems = await response.json()
       const matches: VisualMatch[] = []
 
@@ -101,7 +102,7 @@ export default function VisualAISearch() {
         allItems.forEach((item: any) => {
           if (item.imageFeatures && item.imageFeatures.length > 0) {
             const similarity = calculateSimilarity(imageFeatures, item.imageFeatures)
-            
+
             if (similarity > 0.7) {
               matches.push({
                 item,
@@ -140,7 +141,7 @@ export default function VisualAISearch() {
 
       // Category matching if AI detected objects
       if (aiCategory && aiCategory !== 'Other') {
-        const categoryMatches = allItems.filter((item: any) => 
+        const categoryMatches = allItems.filter((item: any) =>
           item.category?.toLowerCase() === aiCategory.toLowerCase()
         )
 
@@ -165,7 +166,7 @@ export default function VisualAISearch() {
       setMatches(sortedMatches)
     } catch (error) {
       console.error('Search error:', error)
-      alert('Search failed. Please try again.')
+      toast.error('Search failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -186,7 +187,7 @@ export default function VisualAISearch() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button 
+        <Button
           className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg"
           onClick={loadModels}
         >
@@ -194,7 +195,7 @@ export default function VisualAISearch() {
           AI Visual Search
         </Button>
       </DialogTrigger>
-      
+
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -359,15 +360,14 @@ export default function VisualAISearch() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h4 className="font-semibold">{match.item.title}</h4>
-                            <Badge className={`${
-                              match.confidence === 'High' ? 'bg-green-500' :
-                              match.confidence === 'Medium' ? 'bg-yellow-500' : 'bg-gray-500'
-                            } text-white`}>
+                            <Badge className={`${match.confidence === 'High' ? 'bg-green-500' :
+                                match.confidence === 'Medium' ? 'bg-yellow-500' : 'bg-gray-500'
+                              } text-white`}>
                               {match.confidence} Match
                             </Badge>
                             <Badge variant="outline">
                               {match.matchType === 'visual' ? '👁️ Visual' :
-                               match.matchType === 'combined' ? '🧠 AI+Text' : '📝 Text'}
+                                match.matchType === 'combined' ? '🧠 AI+Text' : '📝 Text'}
                             </Badge>
                           </div>
                           <p className="text-sm text-gray-600 mb-2">{match.item.description}</p>

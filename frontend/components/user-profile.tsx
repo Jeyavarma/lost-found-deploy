@@ -10,6 +10,7 @@ import { User, Mail, Phone, MapPin, Save, Eye, EyeOff } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Validator } from '@/lib/validation'
 import { LoadingSpinner } from '@/components/loading-states'
+import { toast } from 'sonner'
 
 interface UserProfileProps {
   user: any
@@ -33,7 +34,7 @@ export default function UserProfile({ user, onUpdate }: UserProfileProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const departments = [
-    'Computer Science', 'Electronics', 'Mechanical', 'Civil', 
+    'Computer Science', 'Electronics', 'Mechanical', 'Civil',
     'Chemistry', 'Physics', 'Mathematics', 'English', 'Commerce'
   ]
 
@@ -99,12 +100,12 @@ export default function UserProfile({ user, onUpdate }: UserProfileProps) {
       onUpdate(updatedUser)
       setEditing(false)
       setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }))
-      
+
       // Show success message
-      alert('Profile updated successfully!')
+      toast.success('Profile updated successfully!')
     } catch (error: any) {
       console.error('Profile update failed:', error)
-      alert(error.message || 'Failed to update profile')
+      toast.error(error.message || 'Failed to update profile')
     } finally {
       setLoading(false)
     }
@@ -174,8 +175,8 @@ export default function UserProfile({ user, onUpdate }: UserProfileProps) {
 
           <div>
             <Label htmlFor="department">Department</Label>
-            <Select 
-              value={formData.department} 
+            <Select
+              value={formData.department}
               onValueChange={(value) => handleInputChange('department', value)}
               disabled={!editing}
             >
@@ -192,8 +193,8 @@ export default function UserProfile({ user, onUpdate }: UserProfileProps) {
 
           <div className="md:col-span-2">
             <Label htmlFor="hostel">Accommodation</Label>
-            <Select 
-              value={formData.hostel} 
+            <Select
+              value={formData.hostel}
               onValueChange={(value) => handleInputChange('hostel', value)}
               disabled={!editing}
             >

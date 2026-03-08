@@ -13,6 +13,7 @@ import { ArrowLeft, MessageCircle, Star, GraduationCap } from "lucide-react"
 const feedbackTypes = ["Bug Report", "Feature Request", "General Feedback", "Complaint", "Suggestion", "Other"]
 const ratings = [1, 2, 3, 4, 5]
 import { api } from "@/lib/api"
+import { toast } from "sonner"
 
 export default function FeedbackPage() {
   const [formData, setFormData] = useState({
@@ -32,7 +33,7 @@ export default function FeedbackPage() {
     try {
       await api.post('/api/feedback', formData)
 
-      alert('Thank you for your feedback! We appreciate your input.')
+      toast.success('Thank you for your feedback! We appreciate your input.')
       setFormData({
         name: "",
         email: "",
@@ -45,7 +46,7 @@ export default function FeedbackPage() {
       })
     } catch (error) {
       console.error('Error:', error)
-      alert('Error submitting feedback. Please try again.')
+      toast.error('Error submitting feedback. Please try again.')
     }
   }
 

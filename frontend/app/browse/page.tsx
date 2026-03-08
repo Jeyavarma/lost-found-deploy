@@ -26,6 +26,7 @@ import { isAuthenticated, getUserData, getAuthToken } from "@/lib/auth"
 import ItemDetailModal from "@/components/features/item-detail-modal"
 import LoadingSkeleton from "@/components/loading-skeleton"
 import EnhancedFloatingChat from "@/components/enhanced-floating-chat"
+import { toast } from "sonner"
 
 
 
@@ -92,7 +93,7 @@ export default function BrowsePage() {
     // Preload placeholder image
     const img = new Image()
     img.src = '/placeholder.svg'
-    
+
     // Check authentication
     const auth = isAuthenticated()
     setAuthenticated(auth)
@@ -100,19 +101,19 @@ export default function BrowsePage() {
       const userData = getUserData()
       setCurrentUserId(userData?.id || '')
     }
-    
+
     // Read search and category parameters from URL
     const urlParams = new URLSearchParams(window.location.search)
     const searchParam = urlParams.get('search')
     const categoryParam = urlParams.get('category')
-    
+
     if (searchParam) {
       setSearchQuery(searchParam)
     }
     if (categoryParam) {
       setCategoryFilter(categoryParam)
     }
-    
+
     fetchItems(1, true) // Load first page
   }, [])
 
@@ -124,7 +125,7 @@ export default function BrowsePage() {
         fetchItems(1, true)
       }
     }, 500) // 500ms delay
-    
+
     return () => clearTimeout(timeoutId)
   }, [searchQuery])
 
@@ -140,30 +141,30 @@ export default function BrowsePage() {
     try {
       if (page === 1) setLoading(true)
       else setLoadingMore(true)
-      
+
       const params = new URLSearchParams({
         page: page.toString(),
         limit: itemsPerPage.toString()
       })
-      
+
       if (categoryFilter !== 'All Categories') {
         params.append('category', categoryFilter)
       }
       if (typeFilter !== 'All') {
         params.append('status', typeFilter)
       }
-      
+
       const response = await fetch(`${BACKEND_URL}/api/items?${params}`)
-      
+
       if (response.ok) {
         const data = await response.json()
-        
+
         if (reset || page === 1) {
           setAllItems(data.items || [])
         } else {
           setAllItems(prev => [...prev, ...(data.items || [])])
         }
-        
+
         if (data.pagination) {
           setCurrentPage(data.pagination.currentPage)
           setTotalPages(data.pagination.totalPages)
@@ -191,13 +192,13 @@ export default function BrowsePage() {
         item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.location.toLowerCase().includes(searchQuery.toLowerCase())
 
-      const matchesCategory = categoryFilter === "All Categories" || 
+      const matchesCategory = categoryFilter === "All Categories" ||
         (item.category && item.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim()) ||
         (!item.category && categoryFilter === "Other")
       const matchesType = typeFilter === "All" || item.status === typeFilter
-      const matchesBuilding = buildingFilter === "All Buildings" || 
+      const matchesBuilding = buildingFilter === "All Buildings" ||
         (item.location && item.location.toLowerCase().includes(buildingFilter.toLowerCase()))
-      const matchesEvent = eventFilter === "All Events" || 
+      const matchesEvent = eventFilter === "All Events" ||
         (item.eventName && item.eventName === eventFilter)
 
       return matchesSearch && matchesCategory && matchesType && matchesBuilding && matchesEvent
@@ -231,13 +232,15 @@ export default function BrowsePage() {
 
   const handleStartChat = async (item: any) => {
     if (!authenticated) {
-      alert('Please login to start a chat')
+      toast.error('Please login to start a chat')
       return
     }
-    
+
     // Simple contact info display instead of complex chat
     const contactInfo = item.contactInfo || 'No contact information available'
-    alert(`Contact Information:\n${contactInfo}\n\nYou can reach out to the person who reported this item.`)
+    toast.info(`Contact Information: ${contactInfo}. You can reach out to the person who reported this item.`, {
+      duration: 5000,
+    })
     setSelectedItem(null)
   }
 
@@ -527,8 +530,8 @@ export default function BrowsePage() {
                           </Button>
 
                         </div>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           className="mcc-accent hover:bg-red-700 text-white"
                           onClick={() => setSelectedItem(item)}
                         >
@@ -602,8 +605,8 @@ export default function BrowsePage() {
                                 {likedItems.has(item._id) ? 1 : 0}
                               </div>
                             </div>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               className="mcc-accent hover:bg-red-700 text-white text-xs sm:text-sm"
                               onClick={() => setSelectedItem(item)}
                             >
@@ -658,14 +661,14 @@ export default function BrowsePage() {
           </div>
         </div>
       </div>
-      
+
       <ItemDetailModal
         item={selectedItem}
         isOpen={!!selectedItem}
         onClose={() => setSelectedItem(null)}
         onStartChat={handleStartChat}
       />
-      
+
       <EnhancedFloatingChat />
     </div>
   )

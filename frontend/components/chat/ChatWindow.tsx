@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { 
-  Send, 
-  X, 
+import {
+  Send,
+  X,
   ArrowLeft,
   MoreVertical,
   UserX
@@ -18,6 +18,7 @@ import { socketManager, type QueuedMessage } from '@/lib/socket'
 import { BACKEND_URL } from '@/lib/config'
 import { getAuthToken } from '@/lib/auth'
 import { notificationManager } from '@/lib/notifications'
+import { toast } from 'sonner'
 // import MessageReactions from './MessageReactions'
 // import MessageSearch from './MessageSearch'
 // import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -87,7 +88,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
   useEffect(() => {
     loadMessages()
     loadPendingMessages()
-    
+
     if (socket) {
       socket.emit('join_room', room._id)
 
@@ -97,7 +98,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
         if (message.clientMessageId) {
           setPendingMessages(prev => prev.filter(p => p.id !== message.clientMessageId))
         }
-        
+
         // Show notification if message is from another user
         if (message.senderId._id !== currentUserId && document.hidden) {
           notificationManager.showChatNotification(
@@ -107,22 +108,22 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
             room.itemId.title
           )
         }
-        
+
         scrollToBottom()
       })
 
       // Listen for reactions
       socket.on('reaction_added', (data: any) => {
-        setMessages(prev => prev.map(msg => 
-          msg._id === data.messageId 
+        setMessages(prev => prev.map(msg =>
+          msg._id === data.messageId
             ? { ...msg, reactions: data.reactions }
             : msg
         ))
       })
 
       socket.on('reaction_removed', (data: any) => {
-        setMessages(prev => prev.map(msg => 
-          msg._id === data.messageId 
+        setMessages(prev => prev.map(msg =>
+          msg._id === data.messageId
             ? { ...msg, reactions: data.reactions }
             : msg
         ))
@@ -130,15 +131,15 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
 
       // Listen for read receipts
       socket.on('messages_read', (data: any) => {
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           data.messageIds.includes(msg._id)
-            ? { 
-                ...msg, 
-                readBy: [...(msg.readBy || []), { 
-                  userId: data.userId, 
-                  readAt: new Date().toISOString() 
-                }]
-              }
+            ? {
+              ...msg,
+              readBy: [...(msg.readBy || []), {
+                userId: data.userId,
+                readAt: new Date().toISOString()
+              }]
+            }
             : msg
         ))
       })
@@ -147,7 +148,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
     // Online/offline detection
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
-    
+
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
@@ -173,8 +174,8 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
   // Mark messages as read when they become visible
   useEffect(() => {
     const unreadMessages = messages
-      .filter(msg => 
-        msg.senderId._id !== currentUserId && 
+      .filter(msg =>
+        msg.senderId._id !== currentUserId &&
         !msg.readBy?.some(r => r.userId === currentUserId)
       )
       .map(msg => msg._id)
@@ -229,7 +230,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
     setSending(true)
     const messageContent = newMessage.trim()
     setNewMessage('') // Clear input immediately
-    
+
     try {
       if (socket && socket.connected) {
         // Send via socket
@@ -254,7 +255,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
           status: 'pending',
           retryCount: 0
         }
-        
+
         setPendingMessages(prev => [...prev, pendingMsg])
       } else {
         // Fallback to HTTP if socket not connected
@@ -279,7 +280,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
       console.error('Failed to send message:', error)
       // Restore message to input on error
       setNewMessage(messageContent)
-      alert('Failed to send message. Please try again.')
+      toast.error('Failed to send message. Please try again.')
     } finally {
       setSending(false)
     }
@@ -299,7 +300,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
 
   const handleBlockUser = async () => {
     if (!otherParticipant) return
-    
+
     try {
       const token = getAuthToken()
       const response = await fetch(`${BACKEND_URL}/api/chat/block/${otherParticipant.userId._id}`, {
@@ -312,7 +313,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
       })
 
       if (response.ok) {
-        alert('User blocked successfully')
+        toast.success('User blocked successfully')
         onClose?.()
       }
     } catch (error) {
@@ -341,15 +342,15 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
             <Button variant="ghost" size="sm" onClick={onBack || onClose}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            
+
             {room.itemId.imageUrl && (
-              <img 
-                src={room.itemId.imageUrl} 
+              <img
+                src={room.itemId.imageUrl}
                 alt={room.itemId.title}
                 className="w-10 h-10 rounded-lg object-cover"
               />
             )}
-            
+
             <div>
               <CardTitle className="text-lg">{room.itemId.title}</CardTitle>
               <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -364,7 +365,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
             <Button variant="ghost" size="sm" onClick={handleBlockUser} title="Block User">
               <UserX className="w-4 h-4" />
             </Button>
-            
+
             {onClose && (
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="w-4 h-4" />
@@ -396,30 +397,27 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
                           </AvatarFallback>
                         </Avatar>
                       )}
-                      
+
                       <div>
-                        <div className={`rounded-lg px-3 py-2 ${
-                          isOwn 
-                            ? 'bg-blue-600 text-white' 
+                        <div className={`rounded-lg px-3 py-2 ${isOwn
+                            ? 'bg-blue-600 text-white'
                             : 'bg-gray-100 text-gray-900'
-                        }`}>
+                          }`}>
                           <p className="text-sm">{message.content}</p>
                           <div className="flex items-center justify-between mt-1">
-                            <p className={`text-xs ${
-                              isOwn ? 'text-blue-100' : 'text-gray-500'
-                            }`}>
+                            <p className={`text-xs ${isOwn ? 'text-blue-100' : 'text-gray-500'
+                              }`}>
                               {formatTime(message.createdAt)}
                             </p>
                             {isOwn && (
-                              <span className={`text-xs ${
-                                isMessageRead(message) ? 'text-blue-200' : 'text-blue-300'
-                              }`}>
+                              <span className={`text-xs ${isMessageRead(message) ? 'text-blue-200' : 'text-blue-300'
+                                }`}>
                                 {isMessageRead(message) ? '✓✓' : '✓'}
                               </span>
                             )}
                           </div>
                         </div>
-                        
+
                         {/* Message reactions - temporarily disabled */}
                         {message.reactions && message.reactions.length > 0 && (
                           <div className="flex gap-1 mt-1">
@@ -469,7 +467,7 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
               📡 You're offline. Messages will be sent when connection is restored.
             </div>
           )}
-          
+
           <div className="flex gap-2">
             <Input
               placeholder={isOnline ? "Type a message..." : "Type a message (will send when online)..."}
@@ -479,8 +477,8 @@ export default function ChatWindow({ room, onClose, onBack, currentUserId }: Cha
               disabled={sending}
               className="flex-1"
             />
-            <Button 
-              onClick={sendMessage} 
+            <Button
+              onClick={sendMessage}
               disabled={!newMessage.trim() || sending}
               size="sm"
             >

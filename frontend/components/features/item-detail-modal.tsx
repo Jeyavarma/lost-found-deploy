@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MapPin, Calendar, User, Package, Phone, Mail, MessageCircle } from "lucide-react"
 import UserStatus from "@/components/user-status"
+import { toast } from "sonner"
 
 interface Item {
   _id: string
@@ -185,7 +186,7 @@ export default function ItemDetailModal({ item, isOpen, onClose, onStartChat }: 
                       try {
                         const token = localStorage.getItem('token');
                         if (!token) {
-                          alert('Please login to start chat');
+                          toast.error('Please login to start chat');
                           return;
                         }
 
@@ -203,11 +204,11 @@ export default function ItemDetailModal({ item, isOpen, onClose, onStartChat }: 
                           window.dispatchEvent(new CustomEvent('openChat', { detail: { room } }));
                           onClose();
                         } else {
-                          alert('Failed to start chat. Please try again.');
+                          toast.error('Failed to start chat. Please try again.');
                         }
                       } catch (error) {
                         console.error('Start chat error:', error);
-                        alert('Failed to start chat. Please try again.');
+                        toast.error('Failed to start chat. Please try again.');
                       }
                     }}
                     className="bg-green-600 hover:bg-green-700 text-white"

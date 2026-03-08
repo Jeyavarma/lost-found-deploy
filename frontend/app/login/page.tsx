@@ -117,7 +117,12 @@ function LoginPageContent() {
           localStorage.setItem("token", data.token);
 
           addLog("STEP 6: Setting window.location.href...");
-          window.location.href = "/dashboard";
+          const returnUrl = searchParams.get("returnUrl")
+          if (returnUrl) {
+            window.location.href = returnUrl
+          } else {
+            window.location.href = "/dashboard"
+          }
         } catch (storageErr: any) {
           addLog(`ERROR in STEP 5/6: Storage ${storageErr.message}`);
           console.error("Storage error:", storageErr);

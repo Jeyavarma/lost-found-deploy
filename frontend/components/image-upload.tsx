@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Upload, X, Image as ImageIcon } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void
@@ -11,11 +12,11 @@ interface ImageUploadProps {
   loading?: boolean
 }
 
-export default function ImageUpload({ 
-  onImageUpload, 
-  onImageRemove, 
-  currentImage, 
-  loading 
+export default function ImageUpload({
+  onImageUpload,
+  onImageRemove,
+  currentImage,
+  loading
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(currentImage || null)
@@ -27,18 +28,18 @@ export default function ImageUpload({
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
+      toast.error('Please select an image file')
       return
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB')
+      toast.error('Image size must be less than 5MB')
       return
     }
 
     setUploading(true)
-    
+
     try {
       // Create preview
       const reader = new FileReader()
@@ -51,7 +52,7 @@ export default function ImageUpload({
       const formData = new FormData()
       formData.append('file', file)
       formData.append('upload_preset', 'mcc-lost-found') // You need to set this in Cloudinary
-      
+
       const response = await fetch(
         'https://api.cloudinary.com/v1_1/difjxpgh1/image/upload',
         {
@@ -66,10 +67,10 @@ export default function ImageUpload({
 
       const data = await response.json()
       onImageUpload(data.secure_url)
-      
+
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Failed to upload image. Please try again.')
+      toast.error('Failed to upload image. Please try again.')
       setPreview(null)
     } finally {
       setUploading(false)
@@ -113,7 +114,7 @@ export default function ImageUpload({
           </Button>
         </div>
       ) : (
-        <div 
+        <div
           onClick={() => fileInputRef.current?.click()}
           className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
         >

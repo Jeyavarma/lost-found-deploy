@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { CheckCircle, Clock, AlertCircle, User, Phone, Mail } from 'lucide-react'
 import { api } from '@/lib/api'
 import { LoadingSpinner } from '@/components/loading-states'
+import { toast } from 'sonner'
 
 interface ClaimModalProps {
   item: any
@@ -39,11 +40,11 @@ export function ClaimModal({ item, isOpen, onClose, onClaimSubmitted }: ClaimMod
         ...formData
       })
 
-      alert('Claim submitted successfully! The item owner will be notified.')
+      toast.success('Claim submitted successfully! The item owner will be notified.')
       onClaimSubmitted()
       onClose()
     } catch (error: any) {
-      alert(error.message || 'Failed to submit claim')
+      toast.error(error.message || 'Failed to submit claim')
     } finally {
       setLoading(false)
     }
@@ -153,7 +154,7 @@ export function ClaimStatus({ claim, onStatusUpdate }: ClaimStatusProps) {
       await api.put(`/api/items/claims/${claim._id}`, { status: newStatus })
       onStatusUpdate(claim._id, newStatus)
     } catch (error: any) {
-      alert(error.message || 'Failed to update claim status')
+      toast.error(error.message || 'Failed to update claim status')
     } finally {
       setLoading(false)
     }
