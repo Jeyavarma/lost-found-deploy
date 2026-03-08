@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
 import { MapPin, Calendar, User, Package, Phone, Mail, MessageCircle, Link2, ExternalLink } from "lucide-react"
 import UserStatus from "@/components/user-status"
 import { toast } from "sonner"
@@ -81,11 +82,14 @@ export default function ItemDetailModal({ item, isOpen, onClose, onStartChat }: 
           {/* Item Image */}
           {(item.itemImageUrl || item.imageUrl) && (
             <div className="flex justify-center">
-              <img
-                src={item.itemImageUrl || item.imageUrl}
-                alt={item.title}
-                className="max-w-full h-64 object-cover rounded-lg shadow-md"
-              />
+              <div className="relative w-full h-64">
+                <Image
+                  src={item.itemImageUrl || item.imageUrl || "/placeholder.svg"}
+                  alt={item.title || "Item image"}
+                  fill
+                  className="object-cover rounded-lg shadow-md"
+                />
+              </div>
             </div>
           )}
 

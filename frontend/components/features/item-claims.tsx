@@ -44,7 +44,8 @@ export function ClaimModal({ item, isOpen, onClose, onClaimSubmitted }: ClaimMod
       onClaimSubmitted()
       onClose()
     } catch (error: any) {
-      toast.error(error.message || 'Failed to submit claim')
+      console.error('Claim submission error:', error);
+      toast.error('Failed to submit claim. Please make sure the form is fully completed.');
     } finally {
       setLoading(false)
     }
@@ -154,7 +155,8 @@ export function ClaimStatus({ claim, onStatusUpdate }: ClaimStatusProps) {
       await api.put(`/api/items/claims/${claim._id}`, { status: newStatus })
       onStatusUpdate(claim._id, newStatus)
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update claim status')
+      console.error('Claim update error:', error);
+      toast.error('Failed to update claim status. Please try again.');
     } finally {
       setLoading(false)
     }

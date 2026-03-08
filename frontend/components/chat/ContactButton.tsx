@@ -52,7 +52,8 @@ export default function ContactButton({ itemId, itemTitle, onChatCreated }: Cont
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         console.error('Chat creation failed:', errorData)
-        toast.error(errorData.error || 'Failed to start conversation')
+        console.error('Chat start error:', errorData);
+        toast.error('Failed to start conversation. The item may be unavailable.')
       }
     } catch (error) {
       console.error('Contact error:', error)

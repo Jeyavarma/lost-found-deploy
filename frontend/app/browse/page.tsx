@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -91,7 +92,7 @@ export default function BrowsePage() {
 
   useEffect(() => {
     // Preload placeholder image
-    const img = new Image()
+    const img = new window.Image()
     img.src = '/placeholder.svg'
 
     // Check authentication
@@ -466,15 +467,13 @@ export default function BrowsePage() {
                     key={item._id}
                     className="mcc-card hover:shadow-xl transition-all duration-300 group cursor-pointer overflow-hidden border-2 border-gray-200 flex flex-col"
                   >
-                    <div className="relative">
-                      <img
+                    <div className="relative w-full h-40 sm:h-48 overflow-hidden rounded-t-lg">
+                      <Image
                         src={item.itemImageUrl || item.imageUrl || "/placeholder.svg"}
-                        alt={item.title}
-                        className="w-full h-40 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.src = '/placeholder.svg'
-                        }}
+                        alt={item.title || "Item image"}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <div
                         className={`absolute top-2 left-2 w-3 h-3 rounded-full ${getUrgencyColor(item.urgency)} animate-pulse`}
@@ -552,15 +551,13 @@ export default function BrowsePage() {
                   >
                     <CardContent className="p-6">
                       <div className="flex gap-4">
-                        <div className="relative">
-                          <img
+                        <div className="relative w-24 h-24 flex-shrink-0">
+                          <Image
                             src={item.itemImageUrl || item.imageUrl || "/placeholder.svg"}
-                            alt={item.title}
-                            className="w-24 h-24 object-cover rounded-lg"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.src = '/placeholder.svg'
-                            }}
+                            alt={item.title || "Item image"}
+                            fill
+                            sizes="96px"
+                            className="object-cover rounded-lg"
                           />
                           <div
                             className={`absolute top-1 left-1 w-2 h-2 rounded-full ${getUrgencyColor(item.urgency)} animate-pulse`}

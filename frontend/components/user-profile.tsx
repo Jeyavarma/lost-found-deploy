@@ -105,7 +105,8 @@ export default function UserProfile({ user, onUpdate }: UserProfileProps) {
       toast.success('Profile updated successfully!')
     } catch (error: any) {
       console.error('Profile update failed:', error)
-      toast.error(error.message || 'Failed to update profile')
+      console.error('Profile update error:', error);
+      toast.error('Failed to update profile. Please try again later.');
     } finally {
       setLoading(false)
     }

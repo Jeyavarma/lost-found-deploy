@@ -76,6 +76,26 @@ export default function ReportFoundPage() {
   const [showOptionalLogin, setShowOptionalLogin] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [step, setStep] = useState(1)
+  const [countdown, setCountdown] = useState(3)
+  const [isDraggingItem, setIsDraggingItem] = useState(false)
+  const [isDraggingLocation, setIsDraggingLocation] = useState(false)
+
+  const validateStep1 = () => {
+    if (!itemImage || !formData.title || !formData.category || !formData.description) {
+      toast.error('Please fill in all required fields marked with * and upload an image in Step 1')
+      return false
+    }
+    return true
+  }
+
+  const validateStep2 = () => {
+    if (!formData.location || !formData.date || !formData.currentLocation) {
+      toast.error('Please fill in all required fields marked with * in Step 2')
+      return false
+    }
+    return true
+  }
 
   const [itemImage, setItemImage] = useState<File | null>(null)
   const [locationImage, setLocationImage] = useState<File | null>(null)
@@ -242,16 +262,23 @@ export default function ReportFoundPage() {
         setShowSuccess(true)
         // Trigger data refresh by dispatching a custom event
         window.dispatchEvent(new CustomEvent('itemSubmitted', { detail: { type: 'found' } }))
-        setTimeout(() => {
-          window.location.href = isAuthenticated ? '/dashboard' : '/'
-        }, 3000)
+        let count = 3
+        const interval = setInterval(() => {
+          count -= 1
+          setCountdown(count)
+          if (count <= 0) {
+            clearInterval(interval)
+            window.location.href = isAuthenticated ? '/dashboard' : '/'
+          }
+        }, 1000)
       } else {
         console.error('❌ Backend logic error')
         toast.error('Error submitting report. Please try again.')
       }
     } catch (error: any) {
       console.error('❌ Network or Server error:', error)
-      toast.error(`Error connecting to server: ${error.message || 'Please check your internet connection'}`)
+      console.error('Server connection error:', error);
+      toast.error('Error connecting to server. Please check your internet connection and try again.');
     } finally {
       setIsSubmitting(false)
     }
@@ -338,37 +365,63 @@ export default function ReportFoundPage() {
     })
   }
 
+  const processImage = async (file: File, type: 'item' | 'location') => {
+    if (type === 'item') setIsCompressingItem(true)
+    else setIsCompressingLocation(true)
+
+    try {
+      const compressedFile = await compressImage(file)
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (type === 'item') {
+          setItemImage(compressedFile)
+          setItemImagePreview(reader.result as string)
+        } else {
+          setLocationImage(compressedFile)
+          setLocationImagePreview(reader.result as string)
+        }
+      }
+      reader.readAsDataURL(compressedFile)
+    } catch (error) {
+      toast.error('Failed to process image')
+    } finally {
+      if (type === 'item') setIsCompressingItem(false)
+      else setIsCompressingLocation(false)
+    }
+  }
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'item' | 'location') => {
     const file = e.target.files?.[0]
     if (file) {
-      if (type === 'item') {
-        setIsCompressingItem(true)
-      } else {
-        setIsCompressingLocation(true)
-      }
+      await processImage(file, type)
+    }
+  }
 
-      try {
-        const compressedFile = await compressImage(file)
-        const reader = new FileReader()
-        reader.onload = () => {
-          if (type === 'item') {
-            setItemImage(compressedFile)
-            setItemImagePreview(reader.result as string)
-          } else {
-            setLocationImage(compressedFile)
-            setLocationImagePreview(reader.result as string)
-          }
-        }
-        reader.readAsDataURL(compressedFile)
-      } catch (error) {
-        toast.error('Failed to process image')
-      } finally {
-        if (type === 'item') {
-          setIsCompressingItem(false)
-        } else {
-          setIsCompressingLocation(false)
-        }
-      }
+  const handleDragOver = (e: React.DragEvent, type: 'item' | 'location') => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (type === 'item') setIsDraggingItem(true)
+    else setIsDraggingLocation(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent, type: 'item' | 'location') => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (type === 'item') setIsDraggingItem(false)
+    else setIsDraggingLocation(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent, type: 'item' | 'location') => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (type === 'item') setIsDraggingItem(false)
+    else setIsDraggingLocation(false)
+
+    const file = e.dataTransfer.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      await processImage(file, type)
+    } else if (file) {
+      toast.error('Please drop a valid image file')
     }
   }
 
@@ -418,322 +471,362 @@ export default function ReportFoundPage() {
           </CardHeader>
           <CardContent className="p-4 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80">
-                <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">1. Item Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1">
-                    <Label htmlFor="title" className="font-medium">Item Name <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-gray-500 mt-1">A short, clear title.</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => handleInputChange("title", e.target.value)}
-                      placeholder="e.g., iPhone 14, Blue Backpack, Car Keys"
-                      required
-                    />
-                  </div>
+              {/* Progress Bar */}
+              <div className="mb-8 relative">
+                <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-green-100">
+                  <div style={{ width: `${(step / 3) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-600 transition-all duration-500"></div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
-                  <div className="md:col-span-1">
-                    <Label htmlFor="category" className="font-medium">Category <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-gray-500 mt-1">Helps in classifying the item.</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <div className="space-y-3">
-                      <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {formData.category === "Other" && (
-                        <Input
-                          value={formData.categoryOther}
-                          onChange={(e) => handleInputChange("categoryOther", e.target.value)}
-                          placeholder="Please specify the category"
-                          required
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
-                  <div className="md:col-span-1">
-                    <Label htmlFor="description" className="font-medium">Description <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-gray-500 mt-1">Be as detailed as possible.</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => handleInputChange("description", e.target.value)}
-                      placeholder="Provide a detailed description including color, brand, size, distinctive, etc."
-                      rows={4}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-200/80 pt-6 mt-6">
-                  <Label className="font-medium mb-4 block">Upload Images</Label>
-                  <p className="text-xs text-gray-500 mb-4">Photos help identify the item and location.</p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Item Photo */}
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Item Photo <span className="text-red-500">*</span></Label>
-                      <label htmlFor="itemImage" className="cursor-pointer block">
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-brand-primary transition-colors">
-                          {isCompressingItem ? (
-                            <div className="flex flex-col items-center justify-center h-32">
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-2"></div>
-                              <p className="text-sm text-gray-500">Processing image...</p>
-                            </div>
-                          ) : itemImagePreview ? (
-                            <>
-                              <img src={itemImagePreview} alt="Item Preview" className="h-32 w-full object-cover rounded-lg mb-2" />
-                              <p className="text-xs text-gray-500">Click to change</p>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                              <p className="text-xs text-gray-600">Click to upload</p>
-                              <p className="text-xs text-gray-500">Auto-compressed &lt; 1MB</p>
-                            </>
-                          )}
-                        </div>
-                        <Input
-                          id="itemImage"
-                          type="file"
-                          className="hidden"
-                          accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                          onChange={(e) => handleImageChange(e, 'item')}
-                        />
-                      </label>
-                    </div>
-
-                    {/* Location Photo */}
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Location Photo (Optional)</Label>
-                      <label htmlFor="locationImage" className="cursor-pointer block">
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-brand-primary transition-colors">
-                          {isCompressingLocation ? (
-                            <div className="flex flex-col items-center justify-center h-32">
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-2"></div>
-                              <p className="text-sm text-gray-500">Processing image...</p>
-                            </div>
-                          ) : locationImagePreview ? (
-                            <>
-                              <img src={locationImagePreview} alt="Location Preview" className="h-32 w-full object-cover rounded-lg mb-2" />
-                              <p className="text-xs text-gray-500">Click to change</p>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                              <p className="text-xs text-gray-600">Click to upload</p>
-                              <p className="text-xs text-gray-500">Auto-compressed &lt; 1MB</p>
-                            </>
-                          )}
-                        </div>
-                        <Input
-                          id="locationImage"
-                          type="file"
-                          className="hidden"
-                          accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                          onChange={(e) => handleImageChange(e, 'location')}
-                        />
-                      </label>
-                    </div>
-                  </div>
+                <div className="flex justify-between text-xs font-medium text-gray-500 px-1">
+                  <span className={step >= 1 ? "text-green-600 font-bold" : ""}>Item Details</span>
+                  <span className={step >= 2 ? "text-green-600 font-bold" : ""}>Location</span>
+                  <span className={step >= 3 ? "text-green-600 font-bold" : ""}>Contact</span>
                 </div>
               </div>
 
-              <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80">
-                <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">2. Where & When It Was Found</h3>
+              {step === 1 && (
+                <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">1. Item Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="title" className="font-medium">Item Name <span className="text-red-500">*</span></Label>
+                      <p className="text-xs text-gray-500 mt-1">A short, clear title.</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => handleInputChange("title", e.target.value)}
+                        placeholder="e.g., iPhone 14, Blue Backpack, Car Keys"
+                        required
+                      />
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1">
-                    <Label htmlFor="location" className="font-medium">Found Location <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-gray-500 mt-1">Where was the item found?</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                      id="location"
-                      value={formData.location}
-                      onChange={(e) => handleInputChange("location", e.target.value)}
-                      placeholder="e.g., Near Library Entrance, Cafeteria Table 5, Physics Lab"
-                      required
-                    />
-                  </div>
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="category" className="font-medium">Category <span className="text-red-500">*</span></Label>
+                      <p className="text-xs text-gray-500 mt-1">Helps in classifying the item.</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="space-y-3">
+                        <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
-                  <div className="md:col-span-1">
-                    <Label className="font-medium">Date & Time Found <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-gray-500 mt-1">When was it found?</p>
+                        {formData.category === "Other" && (
+                          <Input
+                            value={formData.categoryOther}
+                            onChange={(e) => handleInputChange("categoryOther", e.target.value)}
+                            placeholder="Please specify the category"
+                            required
+                          />
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <div className="grid grid-cols-2 gap-3">
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="description" className="font-medium">Description <span className="text-red-500">*</span></Label>
+                      <p className="text-xs text-gray-500 mt-1">Be as detailed as possible.</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Textarea
+                        id="description"
+                        value={formData.description}
+                        onChange={(e) => handleInputChange("description", e.target.value)}
+                        placeholder="Provide a detailed description including color, brand, size, distinctive, etc."
+                        rows={4}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-200/80 pt-6 mt-6">
+                    <Label className="font-medium mb-4 block">Upload Images</Label>
+                    <p className="text-xs text-gray-500 mb-4">Photos help identify the item and location.</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Item Photo */}
                       <div>
-                        <Label htmlFor="date" className="text-sm">Date <span className="text-red-500">*</span></Label>
-                        <Input
-                          id="date"
-                          type="date"
-                          value={formData.date}
-                          onChange={(e) => handleInputChange("date", e.target.value)}
-                          max={new Date().toISOString().split('T')[0]}
-                          required
-                        />
+                        <Label className="text-sm font-medium mb-2 block">Item Photo <span className="text-red-500">*</span></Label>
+                        <label
+                          htmlFor="itemImage"
+                          className="cursor-pointer block"
+                          onDragOver={(e) => handleDragOver(e, 'item')}
+                          onDragLeave={(e) => handleDragLeave(e, 'item')}
+                          onDrop={(e) => handleDrop(e, 'item')}
+                        >
+                          <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${isDraggingItem ? 'border-green-600 bg-green-50' : 'border-gray-300 hover:border-green-600'}`}>
+                            {isCompressingItem ? (
+                              <div className="flex flex-col items-center justify-center h-32">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-2"></div>
+                                <p className="text-sm text-gray-500">Processing image...</p>
+                              </div>
+                            ) : itemImagePreview ? (
+                              <>
+                                <img src={itemImagePreview} alt="Item Preview" className="h-32 w-full object-cover rounded-lg mb-2" />
+                                <p className="text-xs text-gray-500">Click to change</p>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                                <p className="text-xs text-gray-600">Click to upload</p>
+                                <p className="text-xs text-gray-500">Auto-compressed &lt; 1MB</p>
+                              </>
+                            )}
+                          </div>
+                          <Input
+                            id="itemImage"
+                            type="file"
+                            className="hidden"
+                            accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                            onChange={(e) => handleImageChange(e, 'item')}
+                          />
+                        </label>
                       </div>
+
+                      {/* Location Photo */}
                       <div>
-                        <Label htmlFor="time" className="text-sm">Time (Around)</Label>
-                        <Input
-                          id="time"
-                          type="time"
-                          value={formData.time}
-                          onChange={(e) => handleInputChange("time", e.target.value)}
-                        />
+                        <Label className="text-sm font-medium mb-2 block">Location Photo (Optional)</Label>
+                        <label
+                          htmlFor="locationImage"
+                          className="cursor-pointer block"
+                          onDragOver={(e) => handleDragOver(e, 'location')}
+                          onDragLeave={(e) => handleDragLeave(e, 'location')}
+                          onDrop={(e) => handleDrop(e, 'location')}
+                        >
+                          <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${isDraggingLocation ? 'border-green-600 bg-green-50' : 'border-gray-300 hover:border-green-600'}`}>
+                            {isCompressingLocation ? (
+                              <div className="flex flex-col items-center justify-center h-32">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-2"></div>
+                                <p className="text-sm text-gray-500">Processing image...</p>
+                              </div>
+                            ) : locationImagePreview ? (
+                              <>
+                                <img src={locationImagePreview} alt="Location Preview" className="h-32 w-full object-cover rounded-lg mb-2" />
+                                <p className="text-xs text-gray-500">Click to change</p>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                                <p className="text-xs text-gray-600">Click to upload</p>
+                                <p className="text-xs text-gray-500">Auto-compressed &lt; 1MB</p>
+                              </>
+                            )}
+                          </div>
+                          <Input
+                            id="locationImage"
+                            type="file"
+                            className="hidden"
+                            accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                            onChange={(e) => handleImageChange(e, 'location')}
+                          />
+                        </label>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
-                  <div className="md:col-span-1">
-                    <Label htmlFor="currentLocation" className="font-medium">Current Location of Item <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-gray-500 mt-1">Where is the item now?</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                      id="currentLocation"
-                      value={formData.currentLocation}
-                      onChange={(e) => handleInputChange("currentLocation", e.target.value)}
-                      placeholder="e.g., Security Office, My Dorm Room, etc."
-                      required
-                    />
+                  <div className="flex justify-end pt-6 mt-6 border-t border-gray-200/80">
+                    <Button type="button" onClick={() => { if (validateStep1()) setStep(2) }} className="bg-green-600 hover:bg-green-700 text-white px-8">Next Step: Location</Button>
                   </div>
                 </div>
+              )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
-                  <div className="md:col-span-1">
-                    <Label className="font-medium">Related Cultural Event</Label>
-                    <p className="text-xs text-gray-500 mt-1">Was this found during an event?</p>
+              {step === 2 && (
+                <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">2. Where & When It Was Found</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="location" className="font-medium">Found Location <span className="text-red-500">*</span></Label>
+                      <p className="text-xs text-gray-500 mt-1">Where was the item found?</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        id="location"
+                        value={formData.location}
+                        onChange={(e) => handleInputChange("location", e.target.value)}
+                        placeholder="e.g., Near Library Entrance, Cafeteria Table 5, Physics Lab"
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="hasCulturalEvent"
-                          checked={hasCulturalEvent}
-                          onChange={(e) => handleCulturalEventChange(e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                        <Label htmlFor="hasCulturalEvent" className="text-sm">Yes, found during a cultural event</Label>
-                      </div>
 
-                      {hasCulturalEvent && (
-                        <div className="space-y-3">
-                          <Select value={formData.culturalEvent} onValueChange={handleCulturalEventSelect}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select an event" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {culturalEvents.map((event) => (
-                                <SelectItem key={event} value={event}>
-                                  {event}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-
-                          {formData.culturalEvent === "Other" && (
-                            <Input
-                              value={formData.culturalEventOther}
-                              onChange={(e) => handleInputChange("culturalEventOther", e.target.value)}
-                              placeholder="Please specify the event"
-                            />
-                          )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
+                    <div className="md:col-span-1">
+                      <Label className="font-medium">Date & Time Found <span className="text-red-500">*</span></Label>
+                      <p className="text-xs text-gray-500 mt-1">When was it found?</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="date" className="text-sm">Date <span className="text-red-500">*</span></Label>
+                          <Input
+                            id="date"
+                            type="date"
+                            value={formData.date}
+                            onChange={(e) => handleInputChange("date", e.target.value)}
+                            max={new Date().toISOString().split('T')[0]}
+                            required
+                          />
                         </div>
-                      )}
+                        <div>
+                          <Label htmlFor="time" className="text-sm">Time (Around)</Label>
+                          <Input
+                            id="time"
+                            type="time"
+                            value={formData.time}
+                            onChange={(e) => handleInputChange("time", e.target.value)}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="currentLocation" className="font-medium">Current Location of Item <span className="text-red-500">*</span></Label>
+                      <p className="text-xs text-gray-500 mt-1">Where is the item now?</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        id="currentLocation"
+                        value={formData.currentLocation}
+                        onChange={(e) => handleInputChange("currentLocation", e.target.value)}
+                        placeholder="e.g., Security Office, My Dorm Room, etc."
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
+                    <div className="md:col-span-1">
+                      <Label className="font-medium">Related Cultural Event</Label>
+                      <p className="text-xs text-gray-500 mt-1">Was this found during an event?</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="hasCulturalEvent"
+                            checked={hasCulturalEvent}
+                            onChange={(e) => handleCulturalEventChange(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          <Label htmlFor="hasCulturalEvent" className="text-sm">Yes, found during a cultural event</Label>
+                        </div>
+
+                        {hasCulturalEvent && (
+                          <div className="space-y-3">
+                            <Select value={formData.culturalEvent} onValueChange={handleCulturalEventSelect}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select an event" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {culturalEvents.map((event) => (
+                                  <SelectItem key={event} value={event}>
+                                    {event}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            {formData.culturalEvent === "Other" && (
+                              <Input
+                                value={formData.culturalEventOther}
+                                onChange={(e) => handleInputChange("culturalEventOther", e.target.value)}
+                                placeholder="Please specify the event"
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between pt-6 mt-6 border-t border-gray-200/80">
+                    <Button type="button" variant="outline" onClick={() => setStep(1)}>Back</Button>
+                    <Button type="button" onClick={() => { if (validateStep2()) setStep(3) }} className="bg-green-600 hover:bg-green-700 text-white px-8">Next Step: Contact Info</Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80">
-                <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">3. Your Contact Information</h3>
+              {step === 3 && (
+                <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200/80 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <h3 className="text-xl font-semibold mb-6 mcc-text-primary font-serif">3. Your Contact Information</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1">
-                    <Label htmlFor="contactName" className="font-medium">Your Name <span className="text-red-500">*</span></Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="contactName" className="font-medium">Your Name <span className="text-red-500">*</span></Label>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        id="contactName"
+                        value={formData.contactName}
+                        onChange={(e) => handleInputChange("contactName", e.target.value)}
+                        placeholder="Full Name"
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <Input
-                      id="contactName"
-                      value={formData.contactName}
-                      onChange={(e) => handleInputChange("contactName", e.target.value)}
-                      placeholder="Full Name"
-                      required
-                    />
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="contactEmail" className="font-medium">Email Address <span className="text-red-500">*</span></Label>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        id="contactEmail"
+                        type="email"
+                        value={formData.contactEmail}
+                        onChange={(e) => handleInputChange("contactEmail", e.target.value)}
+                        placeholder="your.email@college.edu"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="contactPhone" className="font-medium">Phone Number</Label>
+                      <p className="text-xs text-gray-500 mt-1">Optional, for faster contact.</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Input
+                        id="contactPhone"
+                        value={formData.contactPhone}
+                        onChange={(e) => handleInputChange("contactPhone", e.target.value)}
+                        placeholder="+91 00000 00000"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between pt-6 mt-6 border-t border-gray-200/80">
+                    <Button type="button" variant="outline" onClick={() => setStep(2)}>Back</Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || isCompressingItem || isCompressingLocation}
+                      className={`px-8 py-2 font-medium rounded-lg shadow-lg ${isSubmitting || isCompressingItem || isCompressingLocation
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                        }`}
+                    >
+                      {isSubmitting ? 'Submitting...' : 'Report Found Item'}
+                    </Button>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
-                  <div className="md:col-span-1">
-                    <Label htmlFor="contactEmail" className="font-medium">Email Address <span className="text-red-500">*</span></Label>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                      id="contactEmail"
-                      type="email"
-                      value={formData.contactEmail}
-                      onChange={(e) => handleInputChange("contactEmail", e.target.value)}
-                      placeholder="your.email@college.edu"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200/80 pt-6 mt-6">
-                  <div className="md:col-span-1">
-                    <Label htmlFor="contactPhone" className="font-medium">Phone Number</Label>
-                    <p className="text-xs text-gray-500 mt-1">Optional, for faster contact.</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Input
-                      id="contactPhone"
-                      value={formData.contactPhone}
-                      onChange={(e) => handleInputChange("contactPhone", e.target.value)}
-                      placeholder="+91 00000 00000"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-center pt-6">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || isCompressingItem || isCompressingLocation}
-                  className={`px-8 py-3 font-medium rounded-lg shadow-lg ${isSubmitting || isCompressingItem || isCompressingLocation
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700 text-white'
-                    }`}
-                >
-                  {isSubmitting ? 'Submitting...' : 'Report Found Item'}
-                </Button>
-              </div>
+              )}
 
               <p className="text-xs text-gray-500 text-center">
                 By submitting, you agree to be contacted by the item's owner.
@@ -761,7 +854,12 @@ export default function ReportFoundPage() {
                 {isAuthenticated ? 'Go to Dashboard' : 'Go Home'}
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-4">Redirecting automatically in 3 seconds...</p>
+            <div className="bg-gray-100 rounded-lg p-3 inline-block mt-4">
+              <p className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <div className="animate-spin h-3 w-3 border-2 border-gray-500 border-t-transparent rounded-full" />
+                Redirecting automatically in {countdown} {countdown === 1 ? 'second' : 'seconds'}...
+              </p>
+            </div>
           </div>
         </div>
       )}

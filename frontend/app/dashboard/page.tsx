@@ -24,6 +24,7 @@ import { isAuthenticated, getUserData, getAuthToken, type User as AuthUser } fro
 import { socketManager } from "@/lib/socket"
 import { SOCKET_CONFIG } from "@/lib/socket-config"
 import Link from "next/link"
+import Image from "next/image"
 import { BACKEND_URL } from "@/lib/config"
 import { api } from "@/lib/api"
 import { LoadingSpinner, LoadingCard } from "@/components/loading-states"
@@ -109,7 +110,8 @@ export default function DashboardPage() {
         } catch {
           errorData = { error: errorText }
         }
-        toast.error(`Failed to delete item: ${errorData.error || 'Unknown error'}`)
+        console.error('Delete item error:', errorData.error);
+        toast.error('Failed to delete item. Please try again later.');
       }
     } catch (error) {
       console.error('Delete error:', error)
@@ -324,11 +326,14 @@ export default function DashboardPage() {
                           <div className="flex items-start justify-between">
                             <div className="flex gap-4">
                               {(item.itemImageUrl || item.imageUrl) && (
-                                <img
-                                  src={item.itemImageUrl || item.imageUrl}
-                                  alt={item.title}
-                                  className="w-16 h-16 object-cover rounded-lg"
-                                />
+                                <div className="relative w-16 h-16 flex-shrink-0">
+                                  <Image
+                                    src={item.itemImageUrl || item.imageUrl || "/placeholder.svg"}
+                                    alt={item.title || "Item image"}
+                                    fill
+                                    className="object-cover rounded-lg"
+                                  />
+                                </div>
                               )}
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
@@ -412,11 +417,14 @@ export default function DashboardPage() {
                           <div className="flex items-start justify-between">
                             <div className="flex gap-4">
                               {(item.itemImageUrl || item.imageUrl) && (
-                                <img
-                                  src={item.itemImageUrl || item.imageUrl}
-                                  alt={item.title}
-                                  className="w-16 h-16 object-cover rounded-lg"
-                                />
+                                <div className="relative w-16 h-16 flex-shrink-0">
+                                  <Image
+                                    src={item.itemImageUrl || item.imageUrl || "/placeholder.svg"}
+                                    alt={item.title || "Item image"}
+                                    fill
+                                    className="object-cover rounded-lg"
+                                  />
+                                </div>
                               )}
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
@@ -490,11 +498,14 @@ export default function DashboardPage() {
                           <div className="flex items-start justify-between">
                             <div className="flex gap-4">
                               {(item.itemImageUrl || item.imageUrl) && (
-                                <img
-                                  src={item.itemImageUrl || item.imageUrl}
-                                  alt={item.title}
-                                  className="w-16 h-16 object-cover rounded-lg"
-                                />
+                                <div className="relative w-16 h-16 flex-shrink-0">
+                                  <Image
+                                    src={item.itemImageUrl || item.imageUrl || "/placeholder.svg"}
+                                    alt={item.title || "Item image"}
+                                    fill
+                                    className="object-cover rounded-lg"
+                                  />
+                                </div>
                               )}
                               <div>
                                 <div className="flex items-center gap-2 mb-2">

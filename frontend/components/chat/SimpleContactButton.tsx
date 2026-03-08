@@ -57,10 +57,12 @@ export default function SimpleContactButton({ itemId, itemTitle }: SimpleContact
         console.error('Error response:', errorText)
 
         try {
-          const errorData = JSON.parse(errorText)
-          toast.error(`Error: ${errorData.error || 'Failed to start conversation'}`)
-        } catch {
-          toast.error(`Error: ${response.status} - ${errorText}`)
+          const errorData = await response.json()
+          console.error('Chat creation error:', errorData);
+          toast.error('Failed to start conversation. Please try again later.')
+        } catch (e) {
+          console.error('Chat creation response error:', response.status);
+          toast.error('Failed to connect to chat service. Please try again later.')
         }
       }
     } catch (error) {
