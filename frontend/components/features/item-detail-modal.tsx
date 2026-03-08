@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MapPin, Calendar, User, Package, Phone, Mail, MessageCircle } from "lucide-react"
+import { MapPin, Calendar, User, Package, Phone, Mail, MessageCircle, Link2, ExternalLink } from "lucide-react"
 import UserStatus from "@/components/user-status"
 import { toast } from "sonner"
 
@@ -168,6 +168,29 @@ export default function ItemDetailModal({ item, isOpen, onClose, onStartChat }: 
               className="flex-1"
             >
               Close
+            </Button>
+
+            <Button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/items/${item._id}`);
+                toast.success('Link copied to clipboard!');
+              }}
+              variant="outline"
+              title="Copy Link"
+              className="px-3"
+            >
+              <Link2 className="w-4 h-4" />
+            </Button>
+
+            <Button
+              asChild
+              variant="outline"
+              title="View Full Page"
+              className="px-3"
+            >
+              <a href={`/items/${item._id}`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </Button>
             {reporterEmail && (
               <div className="flex gap-2">
