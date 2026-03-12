@@ -23,16 +23,31 @@ const userSchema = new mongoose.Schema({
   lockedUntil: Date,
   isOnline: { type: Boolean, default: false },
   lastSeen: { type: Date, default: Date.now },
-  deviceType: { type: String, enum: ['mobile', 'desktop'], default: 'desktop' }
+  deviceType: { type: String, enum: ['mobile', 'desktop'], default: 'desktop' },
+  pushSubscription: {
+    endpoint: String,
+    keys: {
+      p256dh: String,
+      auth: String
+    }
+  },
+  notifications: [{
+    title: String,
+    message: String,
+    type: { type: String, enum: ['info', 'match', 'message', 'claim', 'system'], default: 'info' },
+    read: { type: Boolean, default: false },
+    url: { type: String, default: '/' },
+    createdAt: { type: Date, default: Date.now }
+  }]
 }, { timestamps: true });
 
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-userSchema.methods.comparePassword = async function(password) {
+userSchema.methods.comparePassword = async function (password) {
   return bcrypt.compare(password, this.password);
 };
 

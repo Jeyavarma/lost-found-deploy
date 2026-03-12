@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { MessageCircle } from 'lucide-react'
 import { BACKEND_URL } from '@/lib/config'
 import { getAuthToken } from '@/lib/auth'
+import { api } from '@/lib/api'
 import { toast } from 'sonner'
 
 interface ContactButtonProps {
@@ -27,37 +28,21 @@ export default function ContactButton({ itemId, itemTitle, onChatCreated }: Cont
     setLoading(true)
     try {
       console.log('Starting chat for item:', itemId)
-      const response = await fetch(`${BACKEND_URL}/api/chat/room/${itemId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      const room = await api.post(`/api/chat/room/${itemId}`)
 
-      console.log('Response status:', response.status)
+      console.log('Chat room created:', room)
+      onChatCreated?.(room._id)
 
-      if (response.ok) {
-        const room = await response.json()
-        console.log('Chat room created:', room)
-        onChatCreated?.(room._id)
+      // Dispatch event to open floating chat
+      window.dispatchEvent(new CustomEvent('openChat', {
+        detail: { roomId: room._id, room }
+      }))
 
-        // Dispatch event to open floating chat
-        window.dispatchEvent(new CustomEvent('openChat', {
-          detail: { roomId: room._id, room }
-        }))
-
-        // Show success message
-        toast.success('Chat started! Check the chat window.')
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('Chat creation failed:', errorData)
-        console.error('Chat start error:', errorData);
-        toast.error('Failed to start conversation. The item may be unavailable.')
-      }
+      // Show success message
+      toast.success('Chat started! Check the chat window.')
     } catch (error) {
       console.error('Contact error:', error)
-      toast.error('Network error. Please check your connection and try again.')
+      toast.error('Failed to start conversation. Please try again later.')
     } finally {
       setLoading(false)
     }

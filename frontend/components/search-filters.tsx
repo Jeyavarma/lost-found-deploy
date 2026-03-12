@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Search, Filter, X } from 'lucide-react'
+import { categories, locations } from '@/lib/constants'
 
 interface SearchFiltersProps {
   onFiltersChange: (filters: SearchFilters) => void
@@ -20,16 +21,6 @@ export interface SearchFilters {
   location: string
   dateRange: string
 }
-
-const categories = [
-  'Electronics', 'Textbooks', 'Personal Items', 'Clothing', 
-  'Sports Equipment', 'Academic', 'Keys', 'Other'
-]
-
-const locations = [
-  'Main Building', 'Library', 'Cafeteria', 'Sports Complex',
-  'Hostel', 'Science Block', 'Computer Lab', 'Auditorium'
-]
 
 export default function SearchFilters({ onFiltersChange, loading }: SearchFiltersProps) {
   const [filters, setFilters] = useState<SearchFilters>({
@@ -92,7 +83,7 @@ export default function SearchFilters({ onFiltersChange, loading }: SearchFilter
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">All Categories</SelectItem>
-              {categories.map(cat => (
+              {categories.map((cat: string) => (
                 <SelectItem key={cat} value={cat}>{cat}</SelectItem>
               ))}
             </SelectContent>
@@ -115,7 +106,7 @@ export default function SearchFilters({ onFiltersChange, loading }: SearchFilter
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">All Locations</SelectItem>
-              {locations.map(loc => (
+              {locations.map((loc: string) => (
                 <SelectItem key={loc} value={loc}>{loc}</SelectItem>
               ))}
             </SelectContent>
@@ -137,9 +128,9 @@ export default function SearchFilters({ onFiltersChange, loading }: SearchFilter
         {/* Clear Filters */}
         {activeFiltersCount > 0 && (
           <div className="flex justify-end">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={clearFilters}
               disabled={loading}
             >

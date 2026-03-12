@@ -27,6 +27,7 @@ export function ClaimModal({ item, isOpen, onClose, onClaimSubmitted }: ClaimMod
     additionalInfo: '',
     meetingPreference: 'campus'
   })
+  const [verificationAnswers, setVerificationAnswers] = useState<string[]>(Array(item?.verificationQuestions?.length || 0).fill(''))
 
   if (!isOpen || !item) return null
 
@@ -35,9 +36,9 @@ export function ClaimModal({ item, isOpen, onClose, onClaimSubmitted }: ClaimMod
     setLoading(true)
 
     try {
-      await api.post('/api/items/claim', {
-        itemId: item._id,
-        ...formData
+      await api.post(`/api/items/${item._id}/claim`, {
+        ...formData,
+        verificationAnswers
       })
 
       toast.success('Claim submitted successfully! The item owner will be notified.')
@@ -59,6 +60,30 @@ export function ClaimModal({ item, isOpen, onClose, onClaimSubmitted }: ClaimMod
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            {item.isImageHidden && item.verificationQuestions && item.verificationQuestions.length > 0 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-3 mb-4">
+                <h4 className="font-semibold text-orange-800 text-sm">Security Questions</h4>
+                <p className="text-xs text-orange-700">The finder protected this item. You must answer these questions to prove ownership.</p>
+                {item.verificationQuestions.map((q: string, idx: number) => (
+                  <div key={idx}>
+                    <Label className="text-xs text-orange-900">{q}</Label>
+                    <Input
+                      required
+                      value={verificationAnswers[idx] || ''}
+                      onChange={(e) => {
+                        const newAnswers = [...verificationAnswers];
+                        newAnswers[idx] = e.target.value;
+                        setVerificationAnswers(newAnswers);
+                      }}
+                      placeholder="Your answer..."
+                      className="mt-1 h-9 text-sm border-orange-300 focus:ring-orange-500"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div>
               <Label htmlFor="description">Describe why this item is yours</Label>
               <Textarea
@@ -66,7 +91,7 @@ export function ClaimModal({ item, isOpen, onClose, onClaimSubmitted }: ClaimMod
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Provide details that prove ownership (color, brand, unique features, etc.)"
-                required
+                required={!(item.isImageHidden && item.verificationQuestions && item.verificationQuestions.length > 0)}
                 rows={3}
               />
             </div>
@@ -194,13 +219,27 @@ export function ClaimStatus({ claim, onStatusUpdate }: ClaimStatusProps) {
 
             <div className="mt-3">
               <p className="text-sm font-medium">Claim Description:</p>
-              <p className="text-sm text-gray-600">{claim.description}</p>
+              <p className="text-sm text-gray-600">{claim.description || claim.ownershipProof}</p>
             </div>
 
             {claim.additionalInfo && (
               <div className="mt-2">
                 <p className="text-sm font-medium">Additional Info:</p>
                 <p className="text-sm text-gray-600">{claim.additionalInfo}</p>
+              </div>
+            )}
+
+            {claim.verificationQuestions && claim.verificationQuestions.length > 0 && (
+              <div className="mt-3 bg-orange-50 border border-orange-100 p-3 rounded-lg">
+                <p className="text-sm font-semibold text-orange-800 mb-2">Security Questions Answers:</p>
+                <ul className="space-y-2">
+                  {claim.verificationQuestions.map((vq: any, idx: number) => (
+                    <li key={idx} className="bg-white p-2 rounded border border-orange-100 shadow-sm text-sm">
+                      <p className="font-medium text-gray-700">Q: {vq.question}</p>
+                      <p className="text-gray-600 mt-1"><span className="font-medium">A:</span> {vq.answer}</p>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

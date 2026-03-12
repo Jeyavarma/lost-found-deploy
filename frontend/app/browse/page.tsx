@@ -21,40 +21,19 @@ import {
   Grid,
   List,
   GraduationCap,
+  AlertTriangle
 } from "lucide-react"
 import { BACKEND_URL } from "@/lib/config"
 import { isAuthenticated, getUserData, getAuthToken } from "@/lib/auth"
 import ItemDetailModal from "@/components/features/item-detail-modal"
 import LoadingSkeleton from "@/components/loading-skeleton"
-import EnhancedFloatingChat from "@/components/enhanced-floating-chat"
+
+import { categories, locations } from "@/lib/constants"
 import { toast } from "sonner"
 
 
 
-const categories = [
-  "All Categories",
-  "Electronics",
-  "Textbooks",
-  "ID Cards",
-  "Keys",
-  "Academic",
-  "Personal Items",
-  "Clothing",
-  "Sports Equipment",
-  "Other",
-]
 
-const buildings = [
-  "All Buildings",
-  "Computer Science",
-  "Mathematics",
-  "Science Library",
-  "Student Union",
-  "Recreation Center",
-  "Dining Hall",
-  "Engineering",
-  "Library",
-]
 
 const culturalEvents = [
   "All Events",
@@ -71,7 +50,7 @@ export default function BrowsePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("All Categories")
   const [typeFilter, setTypeFilter] = useState("All")
-  const [buildingFilter, setBuildingFilter] = useState("All Buildings")
+  const [locationFilter, setLocationFilter] = useState("All Locations")
   const [urgencyFilter, setUrgencyFilter] = useState("All")
   const [eventFilter, setEventFilter] = useState("All Events")
   const [showRewardOnly, setShowRewardOnly] = useState(false)
@@ -81,6 +60,7 @@ export default function BrowsePage() {
   const [showFilters, setShowFilters] = useState(false)
   const [allItems, setAllItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [isSearching, setIsSearching] = useState(false)
   const [selectedItem, setSelectedItem] = useState<any>(null)
   const [authenticated, setAuthenticated] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
@@ -89,6 +69,51 @@ export default function BrowsePage() {
   const [totalItems, setTotalItems] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
   const itemsPerPage = 20
+
+  const fetchItems = useCallback(async (page = 1, reset = false) => {
+    try {
+      if (page === 1) setLoading(true)
+      else setLoadingMore(true)
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: itemsPerPage.toString()
+      })
+
+      if (categoryFilter !== 'All Categories') {
+        params.append('category', categoryFilter)
+      }
+      if (typeFilter !== 'All') {
+        params.append('status', typeFilter)
+      }
+      if (searchQuery && searchQuery.trim().length > 0) {
+        params.append('search', searchQuery.trim())
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/items?${params}`)
+
+      if (response.ok) {
+        const data = await response.json()
+
+        if (reset || page === 1) {
+          setAllItems(data.items || [])
+        } else {
+          setAllItems(prev => [...prev, ...(data.items || [])])
+        }
+
+        if (data.pagination) {
+          setCurrentPage(data.pagination.currentPage)
+          setTotalPages(data.pagination.totalPages)
+          setTotalItems(data.pagination.totalItems)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching items:', error)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [categoryFilter, typeFilter, itemsPerPage, searchQuery])
 
   useEffect(() => {
     // Preload placeholder image
@@ -120,15 +145,14 @@ export default function BrowsePage() {
 
   // Debounced search to avoid excessive API calls
   useEffect(() => {
+    setIsSearching(true)
     const timeoutId = setTimeout(() => {
-      if (searchQuery.length > 2 || searchQuery.length === 0) {
-        setCurrentPage(1)
-        fetchItems(1, true)
-      }
+      setCurrentPage(1)
+      fetchItems(1, true).finally(() => setIsSearching(false))
     }, 500) // 500ms delay
 
     return () => clearTimeout(timeoutId)
-  }, [searchQuery])
+  }, [searchQuery, fetchItems])
 
   // Fetch items when filters change
   useEffect(() => {
@@ -137,48 +161,6 @@ export default function BrowsePage() {
       fetchItems(1, true)
     }
   }, [categoryFilter, typeFilter])
-
-  const fetchItems = useCallback(async (page = 1, reset = false) => {
-    try {
-      if (page === 1) setLoading(true)
-      else setLoadingMore(true)
-
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: itemsPerPage.toString()
-      })
-
-      if (categoryFilter !== 'All Categories') {
-        params.append('category', categoryFilter)
-      }
-      if (typeFilter !== 'All') {
-        params.append('status', typeFilter)
-      }
-
-      const response = await fetch(`${BACKEND_URL}/api/items?${params}`)
-
-      if (response.ok) {
-        const data = await response.json()
-
-        if (reset || page === 1) {
-          setAllItems(data.items || [])
-        } else {
-          setAllItems(prev => [...prev, ...(data.items || [])])
-        }
-
-        if (data.pagination) {
-          setCurrentPage(data.pagination.currentPage)
-          setTotalPages(data.pagination.totalPages)
-          setTotalItems(data.pagination.totalItems)
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching items:', error)
-    } finally {
-      setLoading(false)
-      setLoadingMore(false)
-    }
-  }, [categoryFilter, typeFilter, itemsPerPage])
 
   const loadMoreItems = () => {
     if (currentPage < totalPages && !loadingMore) {
@@ -197,14 +179,15 @@ export default function BrowsePage() {
         (item.category && item.category.toLowerCase().trim() === categoryFilter.toLowerCase().trim()) ||
         (!item.category && categoryFilter === "Other")
       const matchesType = typeFilter === "All" || item.status === typeFilter
-      const matchesBuilding = buildingFilter === "All Buildings" ||
-        (item.location && item.location.toLowerCase().includes(buildingFilter.toLowerCase()))
+      const matchesLocation = locationFilter === "All Locations" ||
+        (item.location && item.location === locationFilter)
       const matchesEvent = eventFilter === "All Events" ||
         (item.eventName && item.eventName === eventFilter)
+      const matchesUrgency = urgencyFilter === "All" || (urgencyFilter === "Urgent" && item.priority === "urgent")
 
-      return matchesSearch && matchesCategory && matchesType && matchesBuilding && matchesEvent
+      return matchesSearch && matchesCategory && matchesType && matchesLocation && matchesEvent && matchesUrgency
     })
-  }, [allItems, searchQuery, categoryFilter, typeFilter, buildingFilter, eventFilter])
+  }, [allItems, searchQuery, categoryFilter, typeFilter, locationFilter, eventFilter, urgencyFilter])
 
   const sortedItems = useMemo(() => {
     return [...filteredItems].sort((a, b) => {
@@ -213,6 +196,10 @@ export default function BrowsePage() {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         case "oldest":
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        case "urgency":
+          if (a.priority === "urgent" && b.priority !== "urgent") return -1;
+          if (b.priority === "urgent" && a.priority !== "urgent") return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         default:
           return 0
       }
@@ -245,18 +232,7 @@ export default function BrowsePage() {
     setSelectedItem(null)
   }
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "high":
-        return "bg-red-500"
-      case "medium":
-        return "bg-yellow-500"
-      case "low":
-        return "bg-green-500"
-      default:
-        return "bg-gray-500"
-    }
-  }
+  const isUrgent = (item: any) => item.priority === "urgent"
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -321,7 +297,13 @@ export default function BrowsePage() {
                 <div>
                   <Label className="text-sm font-medium mb-2 block mcc-text-primary">Search</Label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    {isSearching ? (
+                      <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-primary"></div>
+                      </div>
+                    ) : (
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    )}
                     <Input
                       type="text"
                       placeholder="Search items..."
@@ -364,17 +346,18 @@ export default function BrowsePage() {
                   </Select>
                 </div>
 
-                {/* Building */}
+                {/* Location */}
                 <div>
-                  <Label className="text-sm font-medium mb-2 block mcc-text-primary">Building</Label>
-                  <Select value={buildingFilter} onValueChange={setBuildingFilter}>
+                  <Label className="text-sm font-medium mb-2 block mcc-text-primary">Location</Label>
+                  <Select value={locationFilter} onValueChange={setLocationFilter}>
                     <SelectTrigger className="border-gray-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {buildings.map((building) => (
-                        <SelectItem key={building} value={building}>
-                          {building}
+                      <SelectItem value="All Locations">All Locations</SelectItem>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc} value={loc}>
+                          {loc}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -475,9 +458,14 @@ export default function BrowsePage() {
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      <div
-                        className={`absolute top-2 left-2 w-3 h-3 rounded-full ${getUrgencyColor(item.urgency)} animate-pulse`}
-                      ></div>
+                      {isUrgent(item) && (
+                        <div className="absolute top-2 left-2 flex gap-1">
+                          <Badge variant="destructive" className="bg-red-600 animate-pulse text-white shadow-md">
+                            <AlertTriangle className="w-3 h-3 mr-1 inline" />
+                            Urgent
+                          </Badge>
+                        </div>
+                      )}
                       <div className="absolute top-2 right-2 flex gap-1">
                         <Badge
                           variant={item.status === "lost" ? "destructive" : "default"}
@@ -485,7 +473,6 @@ export default function BrowsePage() {
                         >
                           {item.status === "lost" ? "Lost" : "Found"}
                         </Badge>
-
                       </div>
 
                     </div>
@@ -559,9 +546,6 @@ export default function BrowsePage() {
                             sizes="96px"
                             className="object-cover rounded-lg"
                           />
-                          <div
-                            className={`absolute top-1 left-1 w-2 h-2 rounded-full ${getUrgencyColor(item.urgency)} animate-pulse`}
-                          ></div>
                         </div>
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-2">
@@ -577,7 +561,12 @@ export default function BrowsePage() {
                                 <Badge variant="outline" className="border-brand-primary/30 mcc-text-primary">
                                   {item.category}
                                 </Badge>
-
+                                {isUrgent(item) && (
+                                  <Badge variant="destructive" className="bg-red-600 animate-pulse text-white shadow-md">
+                                    <AlertTriangle className="w-3 h-3 mr-1 inline" />
+                                    Urgent
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                             <span className="text-sm text-gray-500">{new Date(item.createdAt).toLocaleDateString()}</span>
@@ -644,7 +633,7 @@ export default function BrowsePage() {
                     setSearchQuery("")
                     setCategoryFilter("All Categories")
                     setTypeFilter("All")
-                    setBuildingFilter("All Buildings")
+                    setLocationFilter("All Locations")
                     setUrgencyFilter("All")
                     setEventFilter("All Events")
                     setShowRewardOnly(false)
@@ -666,7 +655,7 @@ export default function BrowsePage() {
         onStartChat={handleStartChat}
       />
 
-      <EnhancedFloatingChat />
+
     </div>
   )
 }

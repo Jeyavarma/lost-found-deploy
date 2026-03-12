@@ -76,60 +76,69 @@ export default function FloatingChat() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${
-          isMinimized ? 'w-80 h-12' : 'w-80 h-96'
-        }`}>
-          <Card className="h-full shadow-xl border-2">
-            <CardHeader className="p-3 bg-blue-600 text-white rounded-t-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-sm font-medium">
-                    {selectedRoom ? selectedRoom.itemId.title : 'Messages'}
-                  </CardTitle>
-                  <ConnectionStatus />
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsMinimized(!isMinimized)}
-                    className="text-white hover:bg-blue-700 p-1 h-6 w-6"
-                  >
-                    <Minimize2 className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setIsOpen(false)
-                      setSelectedRoom(null)
-                      setIsMinimized(false)
-                    }}
-                    className="text-white hover:bg-blue-700 p-1 h-6 w-6"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            
+        <div className={`fixed z-50 transition-all duration-300 ${isMinimized
+            ? 'bottom-6 right-6 w-80 h-12'
+            : 'inset-0 w-full h-[100dvh] md:inset-auto md:bottom-6 md:right-6 md:w-80 md:h-[32rem]'
+          }`}>
+          <div className="h-full bg-background shadow-xl md:border md:border-border md:rounded-xl overflow-hidden flex flex-col">
+
             {!isMinimized && (
-              <CardContent className="p-0 h-full overflow-hidden">
+              <div className="flex-1 overflow-hidden">
                 {selectedRoom ? (
                   <ChatWindow
                     room={selectedRoom}
                     currentUserId={currentUserId}
                     onBack={handleBackToList}
+                    onClose={() => {
+                      setIsOpen(false)
+                      setSelectedRoom(null)
+                      setIsMinimized(false)
+                    }}
+                    onMinimize={() => setIsMinimized(true)}
                   />
                 ) : (
                   <ChatList
                     onSelectRoom={handleSelectRoom}
                     currentUserId={currentUserId}
+                    onClose={() => {
+                      setIsOpen(false)
+                      setSelectedRoom(null)
+                      setIsMinimized(false)
+                    }}
+                    onMinimize={() => setIsMinimized(true)}
                   />
                 )}
-              </CardContent>
+              </div>
             )}
-          </Card>
+
+            {/* Minimized Header View */}
+            {isMinimized && (
+              <div
+                className="w-full h-full bg-blue-600 text-white px-3 py-2 flex items-center justify-between cursor-pointer rounded-lg"
+                onClick={() => setIsMinimized(false)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">
+                    {selectedRoom ? selectedRoom.itemId.title : 'Messages'}
+                  </span>
+                  <ConnectionStatus />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsOpen(false)
+                    setSelectedRoom(null)
+                    setIsMinimized(false)
+                  }}
+                  className="text-white hover:bg-blue-700 p-1 h-6 w-6"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>

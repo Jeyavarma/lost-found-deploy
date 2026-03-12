@@ -10,24 +10,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Upload, User, GraduationCap, CheckCircle, Home } from "lucide-react"
+import { Upload, Camera, MapPin, Calendar, Clock, ImageIcon, FileText, CheckCircle, Smartphone, Home, Shield, Search, User, Loader2, ArrowLeft, GraduationCap } from "lucide-react"
 import Image from "next/image"
 import Navigation from "@/components/layout/navigation"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
-
-const categories = ["ID Card", "Mobile Phone", "Laptop", "Wallet", "Keys", "Books", "Clothing", "Jewelry", "Other"]
-
-const culturalEvents = [
-  "Deepwoods",
-  "Moonshadow",
-  "Octavia",
-  "Barnes Hall Day",
-  "Martin Hall Day",
-  "Games Fury",
-  "Founders Day",
-  "Other"
-];
+import { categories, culturalEvents } from "@/lib/constants"
 
 export default function ReportLostPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -38,6 +26,10 @@ export default function ReportLostPage() {
   const [countdown, setCountdown] = useState(3)
   const [isDraggingItem, setIsDraggingItem] = useState(false)
   const [isDraggingLocation, setIsDraggingLocation] = useState(false)
+  const [potentialMatches, setPotentialMatches] = useState<any[]>([])
+  const [isSearchingMatches, setIsSearchingMatches] = useState(false)
+  const [timeError, setTimeError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
 
   const validateStep1 = () => {
     if (!formData.title || !formData.category || !formData.description) {
@@ -50,6 +42,10 @@ export default function ReportLostPage() {
   const validateStep2 = () => {
     if (!formData.location || !formData.date) {
       toast.error('Please fill in all required fields marked with * in Step 2')
+      return false
+    }
+    if (timeError) {
+      toast.error('Please fix the time error before proceeding')
       return false
     }
     return true
@@ -114,6 +110,54 @@ export default function ReportLostPage() {
     event: "",
   })
 
+  // Check for saved draft on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('reportLostDraft')
+    if (savedDraft) {
+      try {
+        const parsedDraft = JSON.parse(savedDraft)
+        // Ensure we don't accidentally override initial state with a malformed draft
+        setFormData(prev => ({ ...prev, ...parsedDraft }))
+      } catch (e) {
+        console.error('Failed to parse saved draft')
+      }
+    }
+  }, [])
+
+  // Save draft whenever formData changes
+  useEffect(() => {
+    if (formData.title || formData.description) {
+      localStorage.setItem('reportLostDraft', JSON.stringify(formData))
+    }
+  }, [formData])
+
+  // Debounced search for potential duplicate "Found" items
+  useEffect(() => {
+    const searchMatches = async () => {
+      if (formData.title.length < 3 && formData.description.length < 5) {
+        setPotentialMatches([])
+        return
+      }
+
+      setIsSearchingMatches(true)
+      try {
+        const query = encodeURIComponent(formData.title || formData.description)
+        const response: any = await api.get(`/api/items?status=found&search=${query}&limit=3`)
+
+        if (response && response.items) {
+          setPotentialMatches(response.items)
+        }
+      } catch (error) {
+        console.error("Failed to fetch potential matches:", error)
+      } finally {
+        setIsSearchingMatches(false)
+      }
+    }
+
+    const timeoutId = setTimeout(searchMatches, 800) // 800ms debounce
+    return () => clearTimeout(timeoutId)
+  }, [formData.title, formData.description])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -175,6 +219,8 @@ export default function ReportLostPage() {
       console.log('✅ Response success!')
 
       if (response.ok) {
+        // Clear draft on successful submission
+        localStorage.removeItem('reportLostDraft')
         setShowSuccess(true)
         let count = 3
         const interval = setInterval(() => {
@@ -199,25 +245,40 @@ export default function ReportLostPage() {
   }
 
   const handleInputChange = (field: string, value: string) => {
+    let error = ""
+    if (field === 'contactEmail' && value) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        error = "Please enter a valid email address."
+      } else if (!value.endsWith('@mcc.edu.in')) {
+        error = "Please use your official MCC email (@mcc.edu.in)."
+      }
+    } else if (field === 'contactPhone' && value && !/^\+?[\d\s-()]{10,}$/.test(value)) {
+      error = "Please enter a valid phone number."
+    }
+
+    setFieldErrors(prev => ({ ...prev, [field]: error }))
+
     // Validate time if it's a time field and date is today
     if (field === 'time' && formData.date) {
       const today = new Date().toISOString().split('T')[0]
       const currentTime = new Date().toTimeString().slice(0, 5)
 
       if (formData.date === today && value > currentTime) {
-        toast.error('Cannot select a future time for today. Please select a time that has already passed.')
-        return
+        setTimeError('Select a past time for today.')
+      } else {
+        setTimeError('')
       }
     }
 
-    // Validate date and reset time if date changes to today with future time
+    // Validate date and reset time error if date changes
     if (field === 'date') {
       const today = new Date().toISOString().split('T')[0]
       const currentTime = new Date().toTimeString().slice(0, 5)
 
-      if (value === today && formData.time > currentTime) {
-        setFormData(prev => ({ ...prev, [field]: value, time: '' }))
-        return
+      if (value === today && formData.time && formData.time > currentTime) {
+        setTimeError('Select a past time for today.')
+      } else {
+        setTimeError('')
       }
     }
 
@@ -439,9 +500,9 @@ export default function ReportLostPage() {
                             <SelectValue placeholder="Select a category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
+                            {categories.map((cat: string) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -475,6 +536,53 @@ export default function ReportLostPage() {
                       />
                     </div>
                   </div>
+
+                  {/* Pre-emptive Duplicate Matching UI */}
+                  {(potentialMatches.length > 0 || isSearchingMatches) && (
+                    <div className="border border-blue-200 bg-blue-50/50 rounded-lg p-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex items-center gap-2 mb-3">
+                        {isSearchingMatches ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        ) : (
+                          <Search className="w-5 h-5 text-blue-600" />
+                        )}
+                        <h4 className="font-semibold text-blue-800">
+                          {isSearchingMatches ? "Checking for similar found items..." : "Wait! Are any of these found items yours?"}
+                        </h4>
+                      </div>
+
+                      {!isSearchingMatches && potentialMatches.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {potentialMatches.map((item) => (
+                            <Link key={item._id} href={`/items/${item._id}`} target="_blank" rel="noopener noreferrer">
+                              <div className="bg-white border hover:border-blue-400 p-3 rounded shadow-sm hover:shadow transition-all group h-full">
+                                <div className="flex gap-2">
+                                  {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt={item.title} className="w-12 h-12 object-cover rounded" />
+                                  ) : (
+                                    <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-gray-400">
+                                      <ImageIcon className="w-6 h-6" />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm truncate text-gray-900 group-hover:text-blue-700">{item.title}</p>
+                                    <p className="text-xs text-gray-500 truncate">{item.location}</p>
+                                    <p className="text-xs text-gray-400 mt-1">{new Date(item.createdAt).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+
+                      {!isSearchingMatches && potentialMatches.length > 0 && (
+                        <p className="text-xs text-blue-600 mt-3 italic text-right">
+                          If none of these are yours, continue filling out the form.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="border-t border-gray-200/80 pt-6 mt-6">
                     <Label className="font-medium mb-4 block">Upload Images</Label>
@@ -612,7 +720,9 @@ export default function ReportLostPage() {
                             type="time"
                             value={formData.time}
                             onChange={(e) => handleInputChange("time", e.target.value)}
+                            className={timeError ? "border-red-500 text-red-900 focus-visible:ring-red-500" : ""}
                           />
+                          {timeError && <p className="text-xs text-red-500 mt-1">{timeError}</p>}
                         </div>
                       </div>
                     </div>
@@ -643,7 +753,7 @@ export default function ReportLostPage() {
                                 <SelectValue placeholder="Select an event" />
                               </SelectTrigger>
                               <SelectContent>
-                                {culturalEvents.map((event) => (
+                                {culturalEvents.map((event: string) => (
                                   <SelectItem key={event} value={event}>
                                     {event}
                                   </SelectItem>
@@ -702,7 +812,11 @@ export default function ReportLostPage() {
                         onChange={(e) => handleInputChange("contactEmail", e.target.value)}
                         placeholder="your.email@college.edu"
                         required
+                        className={fieldErrors.contactEmail ? "border-red-500" : ""}
                       />
+                      {fieldErrors.contactEmail && (
+                        <p className="text-red-500 text-xs mt-1">{fieldErrors.contactEmail}</p>
+                      )}
                     </div>
                   </div>
 
@@ -717,7 +831,11 @@ export default function ReportLostPage() {
                         value={formData.contactPhone}
                         onChange={(e) => handleInputChange("contactPhone", e.target.value)}
                         placeholder="+91 00000 00000"
+                        className={fieldErrors.contactPhone ? "border-red-500" : ""}
                       />
+                      {fieldErrors.contactPhone && (
+                        <p className="text-red-500 text-xs mt-1">{fieldErrors.contactPhone}</p>
+                      )}
                     </div>
                   </div>
 
@@ -726,12 +844,21 @@ export default function ReportLostPage() {
                     <Button
                       type="submit"
                       disabled={!isAuthenticated || isSubmitting || isCompressingItem || isCompressingLocation}
-                      className={`px-8 py-2 font-medium rounded-lg shadow-lg ${isAuthenticated && !(isSubmitting || isCompressingItem || isCompressingLocation)
+                      className={`px-8 py-2 font-medium rounded-lg shadow-lg flex items-center justify-center gap-2 ${isAuthenticated && !(isSubmitting || isCompressingItem || isCompressingLocation)
                         ? 'bg-red-600 hover:bg-red-700 text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                     >
-                      {isSubmitting ? 'Submitting...' : isAuthenticated ? 'Report Lost Item' : 'Login Required'}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : isAuthenticated ? (
+                        'Report Lost Item'
+                      ) : (
+                        'Login Required'
+                      )}
                     </Button>
                   </div>
                 </div>

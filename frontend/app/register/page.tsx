@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { ArrowLeft, GraduationCap, User, Mail, Phone, BookOpen, Shield, CheckCircle } from "lucide-react"
+import { ArrowLeft, GraduationCap, User, Mail, Phone, BookOpen, Shield, CheckCircle, Loader2 } from "lucide-react"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -689,9 +689,16 @@ export default function RegisterPage(): JSX.Element {
                     <button
                       type="submit"
                       disabled={isSubmitting || !registerData.agreeToTerms || !registerData.verifyStudent}
-                      className="ml-auto bg-red-600 hover:bg-red-700 text-white font-semibold px-8 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="ml-auto bg-red-600 hover:bg-red-700 text-white font-semibold px-8 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                     >
-                      {isSubmitting ? "Creating Account..." : "Create Account"}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Creating Account...
+                        </>
+                      ) : (
+                        "Create Account"
+                      )}
                     </button>
                   )}
                 </div>

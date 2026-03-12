@@ -8,6 +8,7 @@ const UserActivity = require('../models/UserActivity');
 const emailService = require('../services/emailService');
 const config = require('../config/environment');
 const { SessionManager, blacklistToken } = require('../middleware/auth/sessionManager');
+const authMiddleware = require('../middleware/auth/authMiddleware');
 // Simple rate limiter
 const passwordResetLimiter = (req, res, next) => next();
 const router = express.Router();
@@ -303,10 +304,9 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     // Send OTP via email service
     const emailResult = await emailService.sendOTPEmail(email, otp);
 
-    // TEMPORARILY show OTP in response for testing
+    // SECURITY: OTP is only sent via email, NOT returned in response
     res.json({
       message: 'OTP sent to your email',
-      otp: otp, // TESTING ONLY - remove in production
       emailSent: emailResult.success
     });
   } catch (error) {
@@ -447,6 +447,30 @@ router.post('/logout', async (req, res) => {
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Logout failed' });
+  }
+});
+
+// Push notification subscription
+router.post('/push-subscribe', authMiddleware, async (req, res) => {
+  try {
+    const { subscription } = req.body;
+
+    if (!subscription) {
+      return res.status(400).json({ message: 'Subscription object is required' });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.pushSubscription = subscription;
+    await user.save();
+
+    res.status(200).json({ message: 'Push subscription saved successfully' });
+  } catch (error) {
+    console.error('Error saving push subscription:', error);
+    res.status(500).json({ message: 'Failed to save push subscription' });
   }
 });
 

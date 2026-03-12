@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { 
-  MessageCircle, 
+import {
+  MessageCircle,
   Search,
-  Plus
+  Plus,
+  X,
+  Minimize2
 } from 'lucide-react'
 import { BACKEND_URL } from '@/lib/config'
 import { getAuthToken } from '@/lib/auth'
@@ -43,9 +45,11 @@ interface ChatRoom {
 interface ChatListProps {
   onSelectRoom: (room: ChatRoom) => void
   currentUserId: string
+  onClose?: () => void
+  onMinimize?: () => void
 }
 
-export default function ChatList({ onSelectRoom, currentUserId }: ChatListProps) {
+export default function ChatList({ onSelectRoom, currentUserId, onClose, onMinimize }: ChatListProps) {
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -124,18 +128,34 @@ export default function ChatList({ onSelectRoom, currentUserId }: ChatListProps)
   }
 
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+    <div className="h-full flex flex-col bg-background">
+      <div className="p-3 border-b flex-shrink-0 bg-blue-600 md:bg-background text-white md:text-foreground">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageCircle className="w-5 h-5" />
-            Messages
+            <h3 className="font-semibold text-base">Messages</h3>
+            <Badge variant="secondary" className="ml-2 bg-white/20 text-white md:bg-secondary md:text-secondary-foreground hover:bg-white/30 md:hover:bg-secondary/80 border-none">
+              {rooms.length}
+            </Badge>
           </div>
-          <Badge variant="secondary">{rooms.length}</Badge>
-        </CardTitle>
-      </CardHeader>
 
-      <CardContent className="p-0">
+          <div className="flex items-center gap-1">
+            {onMinimize && (
+              <Button variant="ghost" size="sm" onClick={onMinimize} className="text-white md:text-foreground hover:bg-white/20 md:hover:bg-accent h-8 w-8 p-0 md:hidden">
+                <Minimize2 className="w-4 h-4" />
+              </Button>
+            )}
+
+            {onClose && (
+              <Button variant="ghost" size="sm" onClick={onClose} className="text-white md:text-foreground hover:bg-white/20 md:hover:bg-accent h-8 w-8 p-0">
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden relative flex flex-col">
         {rooms.length === 0 ? (
           <div className="text-center py-8 px-4">
             <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -149,7 +169,7 @@ export default function ChatList({ onSelectRoom, currentUserId }: ChatListProps)
             <div className="space-y-1 p-2">
               {rooms.filter(room => room && room._id).map((room) => {
                 const otherParticipant = getOtherParticipant(room)
-                
+
                 return (
                   <Button
                     key={room._id}
@@ -160,8 +180,8 @@ export default function ChatList({ onSelectRoom, currentUserId }: ChatListProps)
                     <div className="flex items-center gap-3 w-full">
                       {/* Item Image or Avatar */}
                       {room.itemId?.imageUrl ? (
-                        <img 
-                          src={room.itemId.imageUrl} 
+                        <img
+                          src={room.itemId.imageUrl}
                           alt={room.itemId?.title || 'Item'}
                           className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                           onError={(e) => {
@@ -188,7 +208,7 @@ export default function ChatList({ onSelectRoom, currentUserId }: ChatListProps)
                             </span>
                           )}
                         </div>
-                        
+
                         <div className="flex items-center gap-2 mb-1">
                           {room.itemId?.category && (
                             <Badge variant="outline" className="text-xs">
@@ -213,7 +233,7 @@ export default function ChatList({ onSelectRoom, currentUserId }: ChatListProps)
             </div>
           </ScrollArea>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

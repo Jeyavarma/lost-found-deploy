@@ -23,8 +23,18 @@ const chatMessageSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['text', 'image', 'system'],
+    enum: ['text', 'image', 'system', 'meeting_proposal'],
     default: 'text'
+  },
+  meetingData: {
+    location: String,
+    date: String,
+    time: String,
+    status: {
+      type: String,
+      enum: ['proposed', 'accepted', 'rejected', 'canceled'],
+      default: 'proposed'
+    }
   },
   clientMessageId: String,
   deliveryStatus: {
@@ -32,6 +42,9 @@ const chatMessageSchema = new mongoose.Schema({
     enum: ['sent', 'delivered', 'read'],
     default: 'sent'
   },
+  // Feature 21: edit and soft-delete support
+  editedAt: { type: Date, default: null },
+  deletedAt: { type: Date, default: null },
   readBy: [{
     userId: {
       type: mongoose.Schema.Types.ObjectId,

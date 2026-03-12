@@ -36,6 +36,21 @@ const chatRoomSchema = new mongoose.Schema({
     content: String,
     senderId: mongoose.Schema.Types.ObjectId,
     timestamp: Date
+  },
+  // Feature 22: moderation reporting fields
+  reportedAt: { type: Date, default: null },
+  reportReason: { type: String, default: null },
+  // Feature 23: Handover Scheduling
+  activeMeeting: {
+    messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatMessage' },
+    location: String,
+    date: String,
+    time: String,
+    status: {
+      type: String,
+      enum: ['proposed', 'accepted', 'rejected', 'canceled'],
+      default: 'proposed'
+    }
   }
 }, {
   timestamps: true

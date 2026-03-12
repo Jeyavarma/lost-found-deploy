@@ -12,19 +12,19 @@ import {
   Calendar,
   MapPin,
   Eye,
-  Trash2
+  Trash2,
+  AlertTriangle
 } from "lucide-react"
 import Navigation from "@/components/layout/navigation"
 import AIMatches from "@/components/features/ai-matches"
 import AISearchButton from "@/components/features/ai-search-button"
 import ItemDetailModal from "@/components/features/item-detail-modal"
-import FloatingChat from "@/components/floating-chat"
-import ChatWindow from "@/components/chat/ChatWindow"
 import { isAuthenticated, getUserData, getAuthToken, type User as AuthUser } from "@/lib/auth"
 import { socketManager } from "@/lib/socket"
 import { SOCKET_CONFIG } from "@/lib/socket-config"
 import Link from "next/link"
 import Image from "next/image"
+import ChatWindow from "@/components/chat/ChatWindow"
 import { BACKEND_URL } from "@/lib/config"
 import { api } from "@/lib/api"
 import { LoadingSpinner, LoadingCard } from "@/components/loading-states"
@@ -43,6 +43,7 @@ interface Item {
   itemImageUrl?: string
   imageUrl?: string
   matchScore?: number
+  priority?: 'normal' | 'urgent'
 }
 
 export default function DashboardPage() {
@@ -173,8 +174,16 @@ export default function DashboardPage() {
     }
   }, [])
 
-  const lostItems = myItems.filter(item => item.status === 'lost')
-  const foundItems = myItems.filter(item => item.status === 'found')
+  const sortUrgentFirst = (items: Item[]) => {
+    return [...items].sort((a, b) => {
+      if (a.priority === 'urgent' && b.priority !== 'urgent') return -1;
+      if (b.priority === 'urgent' && a.priority !== 'urgent') return 1;
+      return new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime();
+    });
+  }
+
+  const lostItems = sortUrgentFirst(myItems.filter(item => item.status === 'lost'))
+  const foundItems = sortUrgentFirst(myItems.filter(item => item.status === 'found'))
 
   if (loading) {
     return (
@@ -430,6 +439,12 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-2 mb-2">
                                   <h3 className="font-semibold">{item.title}</h3>
                                   <Badge className="bg-red-500 text-white">Lost</Badge>
+                                  {item.priority === 'urgent' && (
+                                    <Badge variant="destructive" className="bg-red-600 animate-pulse text-white shadow-md">
+                                      <AlertTriangle className="w-3 h-3 mr-1 inline" />
+                                      Urgent
+                                    </Badge>
+                                  )}
                                 </div>
                                 <p className="text-sm text-gray-600 mb-2">{item.description}</p>
                                 <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -511,6 +526,12 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-2 mb-2">
                                   <h3 className="font-semibold">{item.title}</h3>
                                   <Badge className="bg-green-500 text-white">Found</Badge>
+                                  {item.priority === 'urgent' && (
+                                    <Badge variant="destructive" className="bg-red-600 animate-pulse text-white shadow-md">
+                                      <AlertTriangle className="w-3 h-3 mr-1 inline" />
+                                      Urgent
+                                    </Badge>
+                                  )}
                                 </div>
                                 <p className="text-sm text-gray-600 mb-2">{item.description}</p>
                                 <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -639,7 +660,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <FloatingChat />
+
       </div>
     </ErrorBoundary>
   )

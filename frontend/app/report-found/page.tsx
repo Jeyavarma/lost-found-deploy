@@ -11,65 +11,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
-import { ArrowLeft, Upload, Search, User, GraduationCap, CheckCircle, Home } from "lucide-react"
+import { Upload, Camera, MapPin, Calendar, Clock, ImageIcon, FileText, CheckCircle, Smartphone, Home, Shield, Package, User, Hash, Loader2, ArrowLeft, GraduationCap, Search } from "lucide-react"
 import Navigation from "@/components/layout/navigation"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
-
-const categories = ["ID Card", "Mobile Phone", "Laptop", "Wallet", "Keys", "Books", "Clothing", "Jewelry", "Other"]
-
-const locations = [
-  "Bishop Heber Hall",
-  "Selaiyur Hall",
-  "St. Thomas's Hall",
-  "Barnes Hall",
-  "Martin Hall",
-  "Main Auditorium",
-  "ICF Ground (Cricket/Athletics)",
-  "Quadrangle",
-  "Miller Library",
-  "Main Canteen",
-  "Zoology Department",
-  "Botany Department",
-  "Physics Department",
-  "Chemistry Department",
-  "Near Main Gate (Velachery Road)",
-  "Near Air Force Station Road Gate",
-  "Other",
-];
-
-const departments = [
-  "Computer Science",
-  "Physics",
-  "Chemistry",
-  "Mathematics",
-  "Biology",
-  "English",
-  "History",
-  "Economics",
-  "Commerce",
-  "Other"
-];
-
-const hostels = [
-  "Bishop Heber Hall",
-  "Selaiyur Hall",
-  "St. Thomas's Hall",
-  "Barnes Hall",
-  "Martin Hall",
-  "Margaret Hall"
-];
-
-const culturalEvents = [
-  "Deepwoods",
-  "Moonshadow",
-  "Octavia",
-  "Barnes Hall Day",
-  "Martin Hall Day",
-  "Games Fury",
-  "Founders Day",
-  "Other"
-];
+import { categories, locations, departments, hostels, culturalEvents } from "@/lib/constants"
 
 export default function ReportFoundPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -80,6 +26,8 @@ export default function ReportFoundPage() {
   const [countdown, setCountdown] = useState(3)
   const [isDraggingItem, setIsDraggingItem] = useState(false)
   const [isDraggingLocation, setIsDraggingLocation] = useState(false)
+  const [timeError, setTimeError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
 
   const validateStep1 = () => {
     if (!itemImage || !formData.title || !formData.category || !formData.description) {
@@ -92,6 +40,10 @@ export default function ReportFoundPage() {
   const validateStep2 = () => {
     if (!formData.location || !formData.date || !formData.currentLocation) {
       toast.error('Please fill in all required fields marked with * in Step 2')
+      return false
+    }
+    if (timeError) {
+      toast.error('Please fix the time error before proceeding')
       return false
     }
     return true
@@ -150,6 +102,26 @@ export default function ReportFoundPage() {
     culturalEventOther: "",
     event: "",
   })
+
+  // Check for saved draft on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('reportFoundDraft')
+    if (savedDraft) {
+      try {
+        const parsedDraft = JSON.parse(savedDraft)
+        setFormData(prev => ({ ...prev, ...parsedDraft }))
+      } catch (e) {
+        console.error('Failed to parse saved draft')
+      }
+    }
+  }, [])
+
+  // Save draft whenever formData changes
+  useEffect(() => {
+    if (formData.title || formData.description) {
+      localStorage.setItem('reportFoundDraft', JSON.stringify(formData))
+    }
+  }, [formData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -259,6 +231,8 @@ export default function ReportFoundPage() {
       console.log('✅ FOUND ITEM RESPONSE:', response)
 
       if (response.ok) {
+        // Clear draft on successful submission
+        localStorage.removeItem('reportFoundDraft')
         setShowSuccess(true)
         // Trigger data refresh by dispatching a custom event
         window.dispatchEvent(new CustomEvent('itemSubmitted', { detail: { type: 'found' } }))
@@ -285,25 +259,40 @@ export default function ReportFoundPage() {
   }
 
   const handleInputChange = (field: string, value: string) => {
+    let error = ""
+    if (field === 'contactEmail' && value) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        error = "Please enter a valid email address."
+      } else if (!value.endsWith('@mcc.edu.in')) {
+        error = "Please use your official MCC email (@mcc.edu.in)."
+      }
+    } else if (field === 'contactPhone' && value && !/^\+?[\d\s-()]{10,}$/.test(value)) {
+      error = "Please enter a valid phone number."
+    }
+
+    setFieldErrors(prev => ({ ...prev, [field]: error }))
+
     // Validate time if it's a time field and date is today
     if (field === 'time' && formData.date) {
       const today = new Date().toISOString().split('T')[0]
       const currentTime = new Date().toTimeString().slice(0, 5)
 
       if (formData.date === today && value > currentTime) {
-        toast.error('Cannot select a future time for today. Please select a time that has already passed.')
-        return
+        setTimeError('Select a past time for today.')
+      } else {
+        setTimeError('')
       }
     }
 
-    // Validate date and reset time if date changes to today with future time
+    // Validate date and reset time error if date changes
     if (field === 'date') {
       const today = new Date().toISOString().split('T')[0]
       const currentTime = new Date().toTimeString().slice(0, 5)
 
-      if (value === today && formData.time > currentTime) {
-        setFormData(prev => ({ ...prev, [field]: value, time: '' }))
-        return
+      if (value === today && formData.time && formData.time > currentTime) {
+        setTimeError('Select a past time for today.')
+      } else {
+        setTimeError('')
       }
     }
 
@@ -514,7 +503,7 @@ export default function ReportFoundPage() {
                             <SelectValue placeholder="Select a category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((category) => (
+                            {categories.map((category: string) => (
                               <SelectItem key={category} value={category}>
                                 {category}
                               </SelectItem>
@@ -687,7 +676,9 @@ export default function ReportFoundPage() {
                             type="time"
                             value={formData.time}
                             onChange={(e) => handleInputChange("time", e.target.value)}
+                            className={timeError ? "border-red-500 text-red-900 focus-visible:ring-red-500" : ""}
                           />
+                          {timeError && <p className="text-xs text-red-500 mt-1">{timeError}</p>}
                         </div>
                       </div>
                     </div>
@@ -734,7 +725,7 @@ export default function ReportFoundPage() {
                                 <SelectValue placeholder="Select an event" />
                               </SelectTrigger>
                               <SelectContent>
-                                {culturalEvents.map((event) => (
+                                {culturalEvents.map((event: string) => (
                                   <SelectItem key={event} value={event}>
                                     {event}
                                   </SelectItem>
@@ -793,7 +784,11 @@ export default function ReportFoundPage() {
                         onChange={(e) => handleInputChange("contactEmail", e.target.value)}
                         placeholder="your.email@college.edu"
                         required
+                        className={fieldErrors.contactEmail ? "border-red-500" : ""}
                       />
+                      {fieldErrors.contactEmail && (
+                        <p className="text-red-500 text-xs mt-1">{fieldErrors.contactEmail}</p>
+                      )}
                     </div>
                   </div>
 
@@ -808,7 +803,11 @@ export default function ReportFoundPage() {
                         value={formData.contactPhone}
                         onChange={(e) => handleInputChange("contactPhone", e.target.value)}
                         placeholder="+91 00000 00000"
+                        className={fieldErrors.contactPhone ? "border-red-500" : ""}
                       />
+                      {fieldErrors.contactPhone && (
+                        <p className="text-red-500 text-xs mt-1">{fieldErrors.contactPhone}</p>
+                      )}
                     </div>
                   </div>
 
@@ -817,12 +816,19 @@ export default function ReportFoundPage() {
                     <Button
                       type="submit"
                       disabled={isSubmitting || isCompressingItem || isCompressingLocation}
-                      className={`px-8 py-2 font-medium rounded-lg shadow-lg ${isSubmitting || isCompressingItem || isCompressingLocation
+                      className={`px-8 py-2 font-medium rounded-lg shadow-lg flex items-center justify-center gap-2 ${isSubmitting || isCompressingItem || isCompressingLocation
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-green-600 hover:bg-green-700 text-white'
                         }`}
                     >
-                      {isSubmitting ? 'Submitting...' : 'Report Found Item'}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Report Found Item"
+                      )}
                     </Button>
                   </div>
                 </div>

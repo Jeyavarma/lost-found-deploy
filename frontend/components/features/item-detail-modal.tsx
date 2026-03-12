@@ -7,13 +7,15 @@ import Image from "next/image"
 import { MapPin, Calendar, User, Package, Phone, Mail, MessageCircle, Link2, ExternalLink } from "lucide-react"
 import UserStatus from "@/components/user-status"
 import { toast } from "sonner"
+import { api } from "@/lib/api"
+import { getUserData } from "@/lib/auth"
 
 interface Item {
   _id: string
   title: string
   description: string
   category: string
-  status: 'lost' | 'found' | 'claimed' | 'verified'
+  status: 'lost' | 'found' | 'claimed' | 'verified' | 'resolved'
   location: string
   date?: string
   createdAt: string
@@ -26,6 +28,9 @@ interface Item {
     phone?: string
   }
   contactInfo?: string
+  contactName?: string
+  contactEmail?: string
+  contactPhone?: string
   matchScore?: number
 }
 
@@ -45,16 +50,17 @@ export default function ItemDetailModal({ item, isOpen, onClose, onStartChat }: 
       case 'found': return 'bg-green-500 text-white'
       case 'claimed': return 'bg-orange-500 text-white'
       case 'verified': return 'bg-blue-500 text-white'
+      case 'resolved': return 'bg-gray-600 text-white'
       default: return 'bg-gray-500 text-white'
     }
   }
 
-  // Fallback to parsing contactInfo if reportedBy is null (for anonymously reported found items)
-  let reporterName = item.reportedBy?.name || 'Anonymous'
-  let reporterEmail = item.reportedBy?.email || ''
-  let reporterPhone = item.reportedBy?.phone || ''
+  // Use structured contact details if available, fallback to parsing contactInfo if reportedBy is null
+  let reporterName = item.reportedBy?.name || item.contactName || 'Anonymous'
+  let reporterEmail = item.reportedBy?.email || item.contactEmail || ''
+  let reporterPhone = item.reportedBy?.phone || item.contactPhone || ''
 
-  if (!reporterEmail && item.contactInfo) {
+  if (!reporterEmail && item.contactInfo && !item.contactName) {
     const parts = item.contactInfo.split(' - ')
     if (parts.length >= 2) {
       reporterName = parts[0]
@@ -114,11 +120,11 @@ export default function ItemDetailModal({ item, isOpen, onClose, onStartChat }: 
 
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4" />
+                <MapPin className="w-4 h-4" aria-hidden="true" />
                 <span>{item.location}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-4 h-4" aria-hidden="true" />
                 <span>{new Date(item.date || item.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
@@ -136,19 +142,19 @@ export default function ItemDetailModal({ item, isOpen, onClose, onStartChat }: 
               <h4 className="font-semibold mb-2">Reported By</h4>
               <div className="bg-blue-50 p-3 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-blue-600" />
+                  <User className="w-4 h-4 text-blue-600" aria-hidden="true" />
                   <span className="font-medium">{reporterName}</span>
                   {item.reportedBy?._id && <UserStatus userId={item.reportedBy._id} size="sm" />}
                 </div>
                 {reporterEmail && (
                   <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-blue-600" />
+                    <Mail className="w-4 h-4 text-blue-600" aria-hidden="true" />
                     <span className="text-sm">{reporterEmail}</span>
                   </div>
                 )}
                 {reporterPhone && (
                   <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-blue-600" />
+                    <Phone className="w-4 h-4 text-blue-600" aria-hidden="true" />
                     <span className="text-sm">{reporterPhone}</span>
                   </div>
                 )}
@@ -181,80 +187,83 @@ export default function ItemDetailModal({ item, isOpen, onClose, onStartChat }: 
               }}
               variant="outline"
               title="Copy Link"
+              aria-label="Copy Link"
               className="px-3"
             >
-              <Link2 className="w-4 h-4" />
+              <Link2 className="w-4 h-4" aria-hidden="true" />
             </Button>
 
             <Button
               asChild
               variant="outline"
               title="View Full Page"
+              aria-label="View Full Page"
               className="px-3"
             >
               <a href={`/items/${item._id}`} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-4 h-4" aria-hidden="true" />
               </a>
             </Button>
-            {reporterEmail && (
-              <div className="flex gap-2">
-                <Button
-                  asChild
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <a href={`mailto:${reporterEmail}?subject=Regarding ${item.title}&body=Hi ${reporterName}, I saw your ${item.status} item report for "${item.title}". `}>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Email
-                  </a>
-                </Button>
-                {item.reportedBy && (
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const token = localStorage.getItem('token');
-                        if (!token) {
-                          toast.error('Please login to start chat');
-                          return;
-                        }
 
-                        const response = await fetch(`/api/chat/room/${item._id}`, {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                          }
-                        });
+            {(() => {
+              const currentUser = getUserData();
+              const isOwner = currentUser?.id === item.reportedBy?._id;
 
-                        if (response.ok) {
-                          const room = await response.json();
-                          // Trigger chat opening with this room
-                          window.dispatchEvent(new CustomEvent('openChat', { detail: { room } }));
-                          onClose();
-                        } else {
-                          toast.error('Failed to start chat. Please try again.');
-                        }
-                      } catch (error) {
-                        console.error('Start chat error:', error);
-                        toast.error('Failed to start chat. Please try again.');
-                      }
-                    }}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Chat about this item
-                  </Button>
-                )}
-              </div>
-            )}
-            {!reporterEmail && onStartChat && (
-              <Button
-                onClick={() => onStartChat(item)}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Contact Options
-              </Button>
-            )}
+              return !isOwner && (
+                <>
+                  {reporterEmail && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          const subject = encodeURIComponent(`Regarding your ${item.status === 'lost' ? 'lost' : 'found'} item: ${item.title}`);
+                          const body = encodeURIComponent(`Hi ${reporterName},\n\nI believe I might have some information regarding the ${item.title} you posted on MCC Lost & Found.\n\nPlease let me know when we can connect.\n\nThanks!`);
+                          window.location.href = `mailto:${reporterEmail}?subject=${subject}&body=${body}`;
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Mail className="w-4 h-4 mr-2" aria-hidden="true" />
+                        Email {reporterName}
+                      </Button>
+
+                      {item.reportedBy && (
+                        <Button
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem('token') || localStorage.getItem('mcc_auth_token');
+                              if (!token) {
+                                toast.error('Please login to start chat');
+                                return;
+                              }
+
+                              const room = await api.post(`/api/chat/room/${item._id}`);
+                              window.dispatchEvent(new CustomEvent('openChat', { detail: { roomId: room._id, room } }));
+                              toast.success('Chat started!');
+                              onClose();
+                            } catch (error) {
+                              console.error('Start chat error:', error);
+                              toast.error('Failed to start chat. Please try again.');
+                            }
+                          }}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" aria-hidden="true" />
+                          Chat about this item
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {!reporterEmail && onStartChat && (
+                    <Button
+                      onClick={() => onStartChat(item)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" aria-hidden="true" />
+                      Contact Options
+                    </Button>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
       </DialogContent>

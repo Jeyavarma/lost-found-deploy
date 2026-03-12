@@ -27,6 +27,7 @@ import {
   BookOpen,
   UserCheck,
   Settings,
+  Loader2,
 } from "lucide-react"
 import { BACKEND_URL } from "@/lib/config"
 import { setAuthToken, setUserData } from "@/lib/auth"
@@ -407,10 +408,17 @@ function LoginPageContent() {
 
                   <Button
                     type="submit"
-                    className={`w-full h-12 ${portalInfo.color} hover:opacity-90 text-brand-text-light font-medium text-lg shadow-lg`}
+                    className={`w-full h-12 ${portalInfo.color} hover:opacity-90 text-brand-text-light font-medium text-lg shadow-lg flex items-center justify-center gap-2`}
                     disabled={isLoading}
                   >
-                    {isLoading ? "Signing In..." : `Sign In to ${portalInfo.title}`}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Signing In...
+                      </>
+                    ) : (
+                      `Sign In to ${portalInfo.title}`
+                    )}
                   </Button>
 
                   <div id="debug-log" className="mt-4 p-4 bg-gray-900 text-green-400 font-mono text-xs rounded-md overflow-y-auto max-h-40 border border-gray-700 break-words empty:hidden">

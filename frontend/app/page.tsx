@@ -41,7 +41,7 @@ import EventHighlights from "@/components/event-highlights"
 import Navigation from "@/components/layout/navigation"
 import { BACKEND_URL } from "@/lib/config"
 import ItemDetailModal from "@/components/features/item-detail-modal"
-import EnhancedFloatingChat from "@/components/enhanced-floating-chat"
+
 import ImageWithFallback from "@/components/image-with-fallback"
 import { isAuthenticated, getUserData, getAuthToken } from "@/lib/auth"
 
@@ -489,7 +489,7 @@ export default function HomePage() {
         onStartChat={handleStartChat}
       />
 
-      <EnhancedFloatingChat />
+
     </div>
   )
 }

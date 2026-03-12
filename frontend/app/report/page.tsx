@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { ArrowLeft, GraduationCap, Camera, MapPin, Clock, Upload } from "lucide-react"
+import { ArrowLeft, GraduationCap, Camera, MapPin, Clock, Upload, EyeOff, Plus, Trash2, Ghost, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -9,27 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-
-const locations = [
-  { value: "main-building", label: "Main Building" },
-  { value: "library", label: "Library" },
-  { value: "cafeteria", label: "Cafeteria" },
-  { value: "hostel", label: "Hostel" },
-  { value: "sports-complex", label: "Sports Complex" },
-  { value: "auditorium", label: "Auditorium" },
-  { value: "parking", label: "Parking Area" },
-  { value: "garden", label: "Garden/Campus Grounds" }
-]
-
-const categories = [
-  { value: "electronics", label: "Electronics" },
-  { value: "books", label: "Books & Stationery" },
-  { value: "clothing", label: "Clothing & Accessories" },
-  { value: "personal", label: "Personal Items" },
-  { value: "documents", label: "Documents & Cards" },
-  { value: "sports", label: "Sports Equipment" },
-  { value: "other", label: "Other" }
-]
+import { Switch } from "@/components/ui/switch"
+import { categories, locations } from "@/lib/constants"
 
 export default function ReportPage() {
   const router = useRouter()
@@ -48,10 +29,15 @@ export default function ReportPage() {
   })
   const [itemImage, setItemImage] = useState<File | null>(null)
   const [locationImage, setLocationImage] = useState<File | null>(null)
-  const [itemImagePreview, setItemImagePreview] = useState<string>("") 
+  const [itemImagePreview, setItemImagePreview] = useState<string>("")
   const [locationImagePreview, setLocationImagePreview] = useState<string>("")
+  const [isImageHidden, setIsImageHidden] = useState(false)
+  const [verificationQuestions, setVerificationQuestions] = useState<string[]>([''])
+  const [isAnonymous, setIsAnonymous] = useState(false)
+  const [isUrgent, setIsUrgent] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [duplicateWarning, setDuplicateWarning] = useState("")
   const [currentTime] = useState(new Date().toLocaleString('en-IN', {
     timeZone: 'Asia/Kolkata',
     dateStyle: 'full',
@@ -73,7 +59,7 @@ export default function ReportPage() {
         setError("Image size should be less than 1MB")
         return
       }
-      
+
       const reader = new FileReader()
       reader.onload = () => {
         if (type === 'item') {
@@ -88,22 +74,40 @@ export default function ReportPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e?: React.FormEvent, bypassDuplicate: boolean = false) => {
+    if (e) e.preventDefault()
     setIsSubmitting(true)
     setError("")
+    setDuplicateWarning("")
 
     try {
       const submitData = new FormData()
       Object.entries(formData).forEach(([key, value]) => {
         submitData.append(key, value)
       })
-      
+
       if (itemImage) {
         submitData.append('itemImage', itemImage)
       }
       if (locationImage) {
         submitData.append('locationImage', locationImage)
+      }
+
+      if (isImageHidden && formData.status === 'found') {
+        submitData.append('isImageHidden', 'true')
+        submitData.append('verificationQuestions', JSON.stringify(verificationQuestions.filter(q => q.trim() !== '')))
+      }
+
+      if (isAnonymous) {
+        submitData.append('isAnonymous', 'true')
+      }
+
+      if (isUrgent) {
+        submitData.append('priority', 'urgent')
+      }
+
+      if (bypassDuplicate) {
+        submitData.append('bypassDuplicate', 'true')
       }
 
       const token = localStorage.getItem('token')
@@ -117,8 +121,10 @@ export default function ReportPage() {
 
       const data = await response.json()
 
-      if (response.ok) {
+      if (response.ok || response.status === 201) {
         router.push("/dashboard")
+      } else if (response.status === 409 && data.isDuplicateWarning) {
+        setDuplicateWarning(data.message)
       } else {
         setError(data.message || "Failed to submit report")
       }
@@ -128,6 +134,9 @@ export default function ReportPage() {
       setIsSubmitting(false)
     }
   }
+
+  const criticalCategories = ["ID Card", "Mobile Phone", "Laptop", "Wallet", "Keys"];
+  const isCriticalCategory = criticalCategories.includes(formData.category);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -199,8 +208,8 @@ export default function ReportPage() {
                     required
                   >
                     <option value="">Select category</option>
-                    {categories.map(cat => (
-                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                    {categories.map((cat: string) => (
+                      <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
@@ -265,7 +274,7 @@ export default function ReportPage() {
                   <MapPin className="w-4 h-4" />
                   Location Details *
                 </Label>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="location" className="text-xs text-gray-600">Main Location</Label>
@@ -277,8 +286,8 @@ export default function ReportPage() {
                       required
                     >
                       <option value="">Select location</option>
-                      {locations.map(loc => (
-                        <option key={loc.value} value={loc.value}>{loc.label}</option>
+                      {locations.map((loc: string) => (
+                        <option key={loc} value={loc}>{loc}</option>
                       ))}
                     </select>
                   </div>
@@ -349,6 +358,111 @@ export default function ReportPage() {
                 </div>
               </div>
 
+              {/* Proof of Ownership (Hidden Image) - Only for Found Items */}
+              {formData.status === 'found' && (
+                <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium mcc-text-primary flex items-center gap-2">
+                        <EyeOff className="w-4 h-4" />
+                        Protect this item
+                      </Label>
+                      <p className="text-xs text-gray-500 mt-1">Hide the image to prevent fake claims.</p>
+                    </div>
+                    <Switch
+                      checked={isImageHidden}
+                      onCheckedChange={setIsImageHidden}
+                      id="hide-image"
+                    />
+                  </div>
+
+                  {isImageHidden && (
+                    <div className="pt-3 border-t border-gray-100 space-y-3">
+                      <Label className="text-xs font-medium text-gray-700">
+                        Ask questions to verify ownership
+                      </Label>
+                      <p className="text-xs text-gray-500 mb-2">Claimants must answer these before claiming (e.g., "What is the lock screen wallpaper?").</p>
+
+                      {verificationQuestions.map((q, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <Input
+                            placeholder={`Question ${idx + 1}`}
+                            value={q}
+                            onChange={(e) => {
+                              const newQ = [...verificationQuestions]
+                              newQ[idx] = e.target.value
+                              setVerificationQuestions(newQ)
+                            }}
+                            className="h-9 text-sm focus:ring-brand-primary"
+                          />
+                          {verificationQuestions.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-9 w-9 flex-shrink-0 text-red-500 hover:text-red-700"
+                              onClick={() => setVerificationQuestions(verificationQuestions.filter((_, i) => i !== idx))}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+
+                      {verificationQuestions.length < 3 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-blue-600 hover:text-blue-800 p-0 h-auto"
+                          onClick={() => setVerificationQuestions([...verificationQuestions, ''])}
+                        >
+                          <Plus className="w-3 h-3 mr-1" /> Add another question
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Anonymous Reporting */}
+              <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-purple-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium mcc-text-primary flex items-center gap-2">
+                      <Ghost className="w-4 h-4 text-purple-600" />
+                      Report Anonymously
+                    </Label>
+                    <p className="text-xs text-gray-500 mt-1">Hide your name and email from public view. Chat will still work.</p>
+                  </div>
+                  <Switch
+                    checked={isAnonymous}
+                    onCheckedChange={setIsAnonymous}
+                    id="anonymous-report"
+                  />
+                </div>
+              </div>
+
+              {/* Emergency Prioritization */}
+              {isCriticalCategory && (
+                <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-red-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-medium mcc-text-primary flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                        Mark as Urgent / Emergency
+                      </Label>
+                      <p className="text-xs text-gray-500 mt-1">High-priority items (Keys, Wallets, IDs, Phones) are highlighted to help locate them faster.</p>
+                    </div>
+                    <Switch
+                      checked={isUrgent}
+                      onCheckedChange={setIsUrgent}
+                      id="urgent-report"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Location Image Upload */}
               <div>
                 <Label className="text-sm font-medium mcc-text-primary flex items-center gap-2">
@@ -399,6 +513,31 @@ export default function ReportPage() {
               >
                 {isSubmitting ? "Submitting..." : "Submit Report"}
               </Button>
+
+              {duplicateWarning && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4 text-yellow-800 animate-in fade-in slide-in-from-bottom-2">
+                  <p className="font-semibold text-yellow-900 mb-2">Duplicate Detected</p>
+                  <p className="text-sm mb-4">{duplicateWarning}</p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setDuplicateWarning("")}
+                      className="border-yellow-300 text-yellow-800 hover:bg-yellow-100 flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => handleSubmit(undefined, true)}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white flex-1"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Submitting..." : "Add Duplicate Anyway"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>

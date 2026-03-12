@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { MessageCircle } from 'lucide-react'
 import { BACKEND_URL } from '@/lib/config'
 import { isAuthenticated, getAuthToken } from '@/lib/auth'
+import { api } from '@/lib/api'
 import { toast } from 'sonner'
 
 interface SimpleContactButtonProps {
@@ -26,48 +27,19 @@ export default function SimpleContactButton({ itemId, itemTitle }: SimpleContact
     setLoading(true)
 
     try {
-      const token = getAuthToken()
-      console.log('Token:', token ? 'Present' : 'Missing')
-      console.log('Backend URL:', BACKEND_URL)
       console.log('Item ID:', itemId)
+      const room = await api.post(`/api/chat/room/${itemId}`)
+      console.log('Room created:', room)
 
-      const response = await fetch(`${BACKEND_URL}/api/chat/room/${itemId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      // Open floating chat
+      window.dispatchEvent(new CustomEvent('openChat', {
+        detail: { roomId: room._id, room }
+      }))
 
-      console.log('Response status:', response.status)
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
-
-      if (response.ok) {
-        const room = await response.json()
-        console.log('Room created:', room)
-
-        // Open floating chat
-        window.dispatchEvent(new CustomEvent('openChat', {
-          detail: { roomId: room._id, room }
-        }))
-
-        toast.success('Chat started successfully!')
-      } else {
-        const errorText = await response.text()
-        console.error('Error response:', errorText)
-
-        try {
-          const errorData = await response.json()
-          console.error('Chat creation error:', errorData);
-          toast.error('Failed to start conversation. Please try again later.')
-        } catch (e) {
-          console.error('Chat creation response error:', response.status);
-          toast.error('Failed to connect to chat service. Please try again later.')
-        }
-      }
+      toast.success('Chat started successfully!')
     } catch (error) {
-      console.error('Network error:', error)
-      toast.error('Network error. Please check your connection.')
+      console.error('Chat creation error:', error)
+      toast.error('Failed to start conversation. Please try again later.')
     } finally {
       setLoading(false)
     }

@@ -3,19 +3,19 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { 
-  GraduationCap, 
-  User, 
-  Plus, 
-  BookOpen, 
-  MessageCircle, 
+import {
+  GraduationCap,
+  User,
+  Plus,
+  BookOpen,
+  MessageCircle,
   LogOut,
   Settings,
   UserCircle,
@@ -57,7 +57,7 @@ export default function Navigation() {
               </div>
             </Link>
           </div>
-          
+
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
             <Link href="/browse">
@@ -66,30 +66,30 @@ export default function Navigation() {
                 Browse Items
               </Button>
             </Link>
-            
+
             <Link href="/report-lost">
               <Button variant="ghost" className="hover:bg-red-800 text-brand-text-light font-medium">
                 <Plus className="w-4 h-4 mr-2" />
                 Report Lost
               </Button>
             </Link>
-            
+
             <Link href="/report-found">
               <Button variant="ghost" className="hover:bg-red-800 text-brand-text-light font-medium">
                 <Plus className="w-4 h-4 mr-2" />
                 Report Found
               </Button>
             </Link>
-            
+
             <Link href="/feedback">
               <Button variant="ghost" className="hover:bg-red-800 text-brand-text-light font-medium">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Feedback
               </Button>
             </Link>
-            
+
             {authenticated && <NotificationBell />}
-            
+
             {authenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -143,67 +143,77 @@ export default function Navigation() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-red-700 bg-red-900">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <Link href="/browse" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
-                  <BookOpen className="w-4 h-4 mr-3" />
-                  Browse Items
-                </Button>
-              </Link>
-              
-              <Link href="/report-lost" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
-                  <Plus className="w-4 h-4 mr-3" />
-                  Report Lost
-                </Button>
-              </Link>
-              
-              <Link href="/report-found" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
-                  <Plus className="w-4 h-4 mr-3" />
-                  Report Found
-                </Button>
-              </Link>
-              
-              <Link href="/feedback" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
-                  <MessageCircle className="w-4 h-4 mr-3" />
-                  Feedback
-                </Button>
-              </Link>
-              
-              {authenticated ? (
-                <div className="border-t border-red-700 pt-2 mt-2">
-                  <div className="px-3 py-2">
-                    <p className="text-sm font-medium text-brand-text-light">{user?.name}</p>
-                    <p className="text-xs text-gray-300">{user?.email}</p>
-                  </div>
-                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
-                      <Settings className="w-4 h-4 mr-3" />
-                      Dashboard
-                    </Button>
-                  </Link>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start text-red-300 hover:bg-red-800"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="w-4 h-4 mr-3" />
-                    Logout
-                  </Button>
-                </div>
-              ) : (
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+          <>
+            {/* Backdrop */}
+            <div
+              className="md:hidden fixed inset-0 top-[3.5rem] xs:top-[4rem] sm:top-[5rem] bg-black/60 z-40 backdrop-blur-sm"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+
+            {/* Menu Content */}
+            <div className="md:hidden absolute top-full left-0 right-0 border-t border-red-700 bg-red-900 z-50 shadow-2xl overflow-y-auto max-h-[calc(100vh-5rem)]">
+              <div className="px-2 pt-2 pb-3 space-y-1">
+                <Link href="/browse" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
-                    <User className="w-4 h-4 mr-3" />
-                    Login
+                    <BookOpen className="w-4 h-4 mr-3" />
+                    Browse Items
                   </Button>
                 </Link>
-              )}
+
+                <Link href="/report-lost" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
+                    <Plus className="w-4 h-4 mr-3" />
+                    Report Lost
+                  </Button>
+                </Link>
+
+                <Link href="/report-found" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
+                    <Plus className="w-4 h-4 mr-3" />
+                    Report Found
+                  </Button>
+                </Link>
+
+                <Link href="/feedback" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
+                    <MessageCircle className="w-4 h-4 mr-3" />
+                    Feedback
+                  </Button>
+                </Link>
+
+                {authenticated ? (
+                  <div className="border-t border-red-700 pt-2 mt-2">
+                    <div className="px-3 py-2">
+                      <p className="text-sm font-medium text-brand-text-light">{user?.name}</p>
+                      <p className="text-xs text-gray-300">{user?.email}</p>
+                    </div>
+                    <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
+                        <Settings className="w-4 h-4 mr-3" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-red-300 hover:bg-red-800"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-4 h-4 mr-3" />
+                      Logout
+                    </Button>
+                  </div>
+                ) : (
+                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start text-brand-text-light hover:bg-red-800">
+                      <User className="w-4 h-4 mr-3" />
+                      Login
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </nav>

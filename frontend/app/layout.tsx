@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
-import ImprovedFloatingChat from '@/components/improved-floating-chat'
+import FloatingChat from '@/components/floating-chat'
 import PresenceProvider from '@/components/presence-provider'
+import PushNotificationManager from '@/components/features/push-manager'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -32,8 +33,9 @@ html {
       <body>
         <PresenceProvider>
           {children}
-          <ImprovedFloatingChat />
+          <FloatingChat />
           <Toaster richColors position="top-right" />
+          <PushNotificationManager />
         </PresenceProvider>
       </body>
     </html>

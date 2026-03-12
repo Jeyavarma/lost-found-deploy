@@ -1,4 +1,5 @@
-const Message = require('../models/Message');
+// BUG FIX: was requiring the non-existent '../models/Message'. Corrected to ChatMessage.
+const Message = require('../models/ChatMessage');
 const ChatRoom = require('../models/ChatRoom');
 
 // Configuration
@@ -51,7 +52,7 @@ class ChatCleanup {
   // Run full cleanup process
   async runCleanup() {
     console.log('🧹 Starting chat cleanup process...');
-    
+
     try {
       const messagesDeleted = await this.cleanupOldMessages();
       const roomsArchived = await this.archiveInactiveRooms();
