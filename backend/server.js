@@ -34,6 +34,7 @@ const buildAllowedOrigins = () => {
     'https://lost-found-mcc.vercel.app',
     'https://mcc-lost-found.vercel.app',
     'https://lost-found-79xn.onrender.com',
+    'https://lost-found-backend-u3bx.onrender.com',
     'https://lost-found-ashen.vercel.app',
   ];
   // FRONTEND_URL env var: single URL for the primary frontend (e.g. your Vercel URL)
