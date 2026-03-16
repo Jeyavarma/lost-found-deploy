@@ -1,5 +1,5 @@
 const Item = require('../models/Item');
-const { setCache } = require('../config/redis-replacement');
+const { setCache } = require('../config/redisClient');
 const { isConfigured } = require('../utils/openai');
 const visualAIService = require('../services/visualAI');
 
