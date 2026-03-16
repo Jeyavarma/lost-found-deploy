@@ -31,6 +31,7 @@ const server = http.createServer(app);
 // Build allowed origins from env var + hardcoded fallbacks
 const buildAllowedOrigins = () => {
   const base = [
+    'https://lost-found-deploy.vercel.app',
     'https://lost-found-mcc.vercel.app',
     'https://mcc-lost-found.vercel.app',
     'https://lost-found-79xn.onrender.com',
