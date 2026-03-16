@@ -16,20 +16,23 @@ import {
   AlertTriangle
 } from "lucide-react"
 import Navigation from "@/components/layout/navigation"
-import AIMatches from "@/components/features/ai-matches"
-import AISearchButton from "@/components/features/ai-search-button"
-import ItemDetailModal from "@/components/features/item-detail-modal"
 import { isAuthenticated, getUserData, getAuthToken, type User as AuthUser } from "@/lib/auth"
 import { socketManager } from "@/lib/socket"
 import { SOCKET_CONFIG } from "@/lib/socket-config"
 import Link from "next/link"
 import Image from "next/image"
-import ChatWindow from "@/components/chat/ChatWindow"
 import { BACKEND_URL } from "@/lib/config"
 import { api } from "@/lib/api"
 import { LoadingSpinner, LoadingCard } from "@/components/loading-states"
 import ErrorBoundary from "@/components/error-boundary"
 import { toast } from "sonner"
+import dynamic from 'next/dynamic'
+
+// Lazy load heavy dashboard components
+const AIMatches = dynamic(() => import('@/components/features/ai-matches'), { ssr: false, loading: () => <LoadingCard /> })
+const ItemDetailModal = dynamic(() => import('@/components/features/item-detail-modal'), { ssr: false })
+const ChatWindow = dynamic(() => import('@/components/chat/ChatWindow'), { ssr: false, loading: () => <div className="h-full flex items-center justify-center">Loading Chat...</div> })
+const AISearchButton = dynamic(() => import('@/components/features/ai-search-button'), { ssr: false })
 
 interface Item {
   _id: string

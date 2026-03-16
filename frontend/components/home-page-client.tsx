@@ -34,14 +34,17 @@ import {
   GraduationCap,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import MccCampusMap from "@/components/mcc-campus-map"
-import LiveActivity from "@/components/live-activity"
-import EventHighlights from "@/components/event-highlights"
 import Navigation from "@/components/layout/navigation"
 import { BACKEND_URL } from "@/lib/config"
-import ItemDetailModal from "@/components/features/item-detail-modal"
 import ImageWithFallback from "@/components/image-with-fallback"
 import { isAuthenticated, getUserData, getAuthToken } from "@/lib/auth"
+import dynamic from 'next/dynamic'
+
+// Lazy load heavy components
+const MccCampusMap = dynamic(() => import('@/components/mcc-campus-map'), { ssr: false, loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-lg flex items-center justify-center">Loading Campus Map...</div> })
+const LiveActivity = dynamic(() => import('@/components/live-activity'), { ssr: false })
+const EventHighlights = dynamic(() => import('@/components/event-highlights'), { ssr: false })
+const ItemDetailModal = dynamic(() => import('@/components/features/item-detail-modal'), { ssr: false })
 
 interface HomePageClientProps {
   initialAllItems: any[];
@@ -56,7 +59,7 @@ export default function HomePageClient({ initialAllItems, initialRecentItems }: 
   const [showQuickActions, setShowQuickActions] = useState(true)
   const [allItems, setAllItems] = useState<any[]>(initialAllItems || [])
   const [recentItems, setRecentItems] = useState<any[]>(initialRecentItems || [])
-  
+
   // Notice we completely dropped the loading state for these items because SSR provides them instantly!
   const [showMessaging, setShowMessaging] = useState(false)
   const [showTamilMode, setShowTamilMode] = useState(false)
@@ -281,88 +284,88 @@ export default function HomePageClient({ initialAllItems, initialRecentItems }: 
         </div>
 
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {filteredItems.slice(0, 4).map((item) => (
-              <Card
-                key={item._id}
-                className="mcc-card hover:shadow-2xl transition-all duration-500 group cursor-pointer overflow-hidden border-2 border-gray-200"
-              >
-                <div className="relative">
-                  <ImageWithFallback
-                    src={item.itemImageUrl || item.imageUrl}
-                    alt={item.title}
-                    className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500"
-                    fallbackText="No Image"
-                  />
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    <Badge
-                      variant={item.status === "lost" ? "destructive" : "default"}
-                      className={`shadow-lg font-medium ${item.status === "lost" ? "bg-red-500" : "bg-green-500"
-                        } text-white`}
-                    >
-                      {item.status === "lost" ? "Lost" : "Found"}
-                    </Badge>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {filteredItems.slice(0, 4).map((item) => (
+            <Card
+              key={item._id}
+              className="mcc-card hover:shadow-2xl transition-all duration-500 group cursor-pointer overflow-hidden border-2 border-gray-200"
+            >
+              <div className="relative">
+                <ImageWithFallback
+                  src={item.itemImageUrl || item.imageUrl}
+                  alt={item.title}
+                  className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500"
+                  fallbackText="No Image"
+                />
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <Badge
+                    variant={item.status === "lost" ? "destructive" : "default"}
+                    className={`shadow-lg font-medium ${item.status === "lost" ? "bg-red-500" : "bg-green-500"
+                      } text-white`}
+                  >
+                    {item.status === "lost" ? "Lost" : "Found"}
+                  </Badge>
+                </div>
+              </div>
+
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <Badge variant="outline" className="text-xs font-medium border-brand-primary/30 mcc-text-primary">
+                    {item.category}
+                  </Badge>
+                  <span className="text-xs text-gray-500 font-medium">
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+
+                <CardTitle className="text-lg mb-3 group-hover:text-brand-primary transition-colors cursor-pointer font-serif">
+                  {item.title}
+                </CardTitle>
+                <CardDescription className="mb-4 line-clamp-2 text-brand-text-dark">
+                  {item.description}
+                </CardDescription>
+
+                <div className="space-y-2 text-sm text-brand-text-dark mb-5">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 mcc-text-primary" />
+                    <span className="truncate font-medium">{item.location}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-yellow-600" />
+                    <span className="font-medium">{item.reportedBy?.name || 'Anonymous'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-yellow-600" />
+                    <span className="truncate font-medium">{item.reportedBy?.email || item.contactEmail}</span>
                   </div>
                 </div>
 
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <Badge variant="outline" className="text-xs font-medium border-brand-primary/30 mcc-text-primary">
-                      {item.category}
-                    </Badge>
-                    <span className="text-xs text-gray-500 font-medium">
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  <CardTitle className="text-lg mb-3 group-hover:text-brand-primary transition-colors cursor-pointer font-serif">
-                    {item.title}
-                  </CardTitle>
-                  <CardDescription className="mb-4 line-clamp-2 text-brand-text-dark">
-                    {item.description}
-                  </CardDescription>
-
-                  <div className="space-y-2 text-sm text-brand-text-dark mb-5">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 mcc-text-primary" />
-                      <span className="truncate font-medium">{item.location}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-yellow-600" />
-                      <span className="font-medium">{item.reportedBy?.name || 'Anonymous'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-yellow-600" />
-                      <span className="truncate font-medium">{item.reportedBy?.email || item.contactEmail}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleLike(item._id)}
-                        className={`flex items-center gap-1 hover:bg-red-50 ${likedItems.has(item._id) ? "text-red-500" : "text-gray-500"
-                          }`}
-                      >
-                        <Heart className={`w-4 h-4 ${likedItems.has(item._id) ? "fill-current" : ""}`} />
-                        <span className="font-medium">{likedItems.has(item._id) ? 1 : 0}</span>
-                      </Button>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
                     <Button
+                      variant="ghost"
                       size="sm"
-                      className="mcc-accent hover:bg-red-700 text-white shadow-md font-medium"
-                      onClick={() => setSelectedItem(item)}
+                      onClick={() => handleLike(item._id)}
+                      className={`flex items-center gap-1 hover:bg-red-50 ${likedItems.has(item._id) ? "text-red-500" : "text-gray-500"
+                        }`}
                     >
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      Contact
+                      <Heart className={`w-4 h-4 ${likedItems.has(item._id) ? "fill-current" : ""}`} />
+                      <span className="font-medium">{likedItems.has(item._id) ? 1 : 0}</span>
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  <Button
+                    size="sm"
+                    className="mcc-accent hover:bg-red-700 text-white shadow-md font-medium"
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    <MessageCircle className="w-4 h-4 mr-1" />
+                    Contact
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
 
       </div>
