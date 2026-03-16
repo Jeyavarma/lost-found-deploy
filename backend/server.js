@@ -139,8 +139,8 @@ mongoose.connect(config.MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
     // Initialize Redis and background services
-    connectRedis();
-    MatchingService.scheduleMatchUpdates();
+    // connectRedis();
+    // MatchingService.scheduleMatchUpdates(); // Disabled: Too heavy for Render Free Tier CPU during startup
   })
   .catch(err => {
     console.error('MongoDB connection error:', err)
