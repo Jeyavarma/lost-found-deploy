@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://lost-found-79xn.onrender.com/api/:path*"
+      "destination": "https://lost-found-backend-u3bx.onrender.com/api/:path*"
     },
     {
       "source": "/socket.io/:path*",
-      "destination": "https://lost-found-79xn.onrender.com/socket.io/:path*"
+      "destination": "https://lost-found-backend-u3bx.onrender.com/socket.io/:path*"
     },
     {
       "source": "/uploads/:path*",
-      "destination": "https://lost-found-79xn.onrender.com/uploads/:path*"
+      "destination": "https://lost-found-backend-u3bx.onrender.com/uploads/:path*"
     }
   ]
 }

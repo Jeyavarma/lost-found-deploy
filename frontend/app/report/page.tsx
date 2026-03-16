@@ -111,7 +111,7 @@ export default function ReportPage() {
       }
 
       const token = localStorage.getItem('token')
-      const response = await fetch("https://lost-found-79xn.onrender.com/api/items", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lost-found-backend-u3bx.onrender.com'}/api/items`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`
