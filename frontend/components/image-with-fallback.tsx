@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 
 interface ImageWithFallbackProps {
   src?: string
@@ -10,11 +11,11 @@ interface ImageWithFallbackProps {
   fallbackText?: string
 }
 
-export default function ImageWithFallback({ 
-  src, 
-  alt, 
-  className = "", 
-  fallbackText = "No Image" 
+export default function ImageWithFallback({
+  src,
+  alt,
+  className = "",
+  fallbackText = "No Image"
 }: ImageWithFallbackProps) {
   const [imageError, setImageError] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -31,16 +32,18 @@ export default function ImageWithFallback({
   }
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative overflow-hidden ${className}`}>
       {loading && (
-        <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+        <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center z-10">
           <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
-      <img
+      <Image
         src={src}
         alt={alt}
-        className={`${className} ${loading ? 'opacity-0' : 'opacity-100'} transition-opacity`}
+        fill
+        className={`object-cover ${loading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         onLoad={() => setLoading(false)}
         onError={() => {
           setImageError(true)
