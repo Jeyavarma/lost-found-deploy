@@ -43,7 +43,8 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  // Changed salt rounds from 10 to 8 to significantly speed up signup/login on Render Free Tier
+  this.password = await bcrypt.hash(this.password, 8);
   next();
 });
 
