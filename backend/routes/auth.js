@@ -84,14 +84,15 @@ router.post('/login', async (req, res) => {
 
     // Check if account is locked
     if (user && user.accountLocked && user.lockedUntil && new Date() < user.lockedUntil) {
-      await LoginAttempt.create({
+      LoginAttempt.create({
         email,
         ipAddress,
         userAgent,
         success: false,
         failureReason: 'Account locked',
         userId: user._id
-      });
+      }).catch(err => console.error('Logging error:', err));
+
       const remainingTime = Math.ceil((user.lockedUntil - new Date()) / 60000);
       return res.status(423).json({
         message: `Account locked. Try again in ${remainingTime} minutes.`,
@@ -145,38 +146,39 @@ router.post('/login', async (req, res) => {
           user.lockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
         }
 
-        await user.save();
+        user.save().catch(err => console.error('User update error:', err));
       }
 
-      await LoginAttempt.create({
+      LoginAttempt.create({
         email,
         ipAddress,
         userAgent,
         success: false,
         failureReason: 'Invalid credentials',
         userId: user?._id
-      });
+      }).catch(err => console.error('Logging error:', err));
+
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Successful login
-    await LoginAttempt.create({
+    LoginAttempt.create({
       email,
       ipAddress,
       userAgent,
       success: true,
       userId: user._id
-    });
+    }).catch(err => console.error('Logging error:', err));
 
     // Log user activity
-    await UserActivity.create({
+    UserActivity.create({
       userId: user._id,
       action: 'login',
       details: {
         ipAddress,
         userAgent
       }
-    });
+    }).catch(err => console.error('Activity logging error:', err));
 
     // Update last login and online status
     user.lastLogin = new Date();
@@ -184,7 +186,7 @@ router.post('/login', async (req, res) => {
     user.isOnline = true;
     user.deviceType = userAgent?.includes('Mobile') ? 'mobile' : 'desktop';
     user.loginAttempts = 0; // Reset failed attempts
-    await user.save();
+    user.save().catch(err => console.error('User update error:', err));
 
     const token = SessionManager.generateToken({ userId: user._id });
 
