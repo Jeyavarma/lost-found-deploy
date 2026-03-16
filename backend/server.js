@@ -28,16 +28,31 @@ const { cacheMiddleware } = require('./middleware/simpleCache');
 
 const app = express();
 const server = http.createServer(app);
+// Build allowed origins from env var + hardcoded fallbacks
+const buildAllowedOrigins = () => {
+  const base = [
+    'https://lost-found-mcc.vercel.app',
+    'https://mcc-lost-found.vercel.app',
+    'https://lost-found-79xn.onrender.com',
+    'https://lost-found-ashen.vercel.app',
+  ];
+  // FRONTEND_URL env var: single URL for the primary frontend (e.g. your Vercel URL)
+  if (process.env.FRONTEND_URL) {
+    base.push(process.env.FRONTEND_URL);
+  }
+  // CORS_ORIGINS: comma-separated extra origins
+  if (process.env.CORS_ORIGINS) {
+    process.env.CORS_ORIGINS.split(',').map(o => o.trim()).forEach(o => {
+      if (o && !base.includes(o)) base.push(o);
+    });
+  }
+  return base;
+};
+
 const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
-      ? [
-        'https://lost-found-mcc.vercel.app',
-        'https://mcc-lost-found.vercel.app',
-        'https://lost-found-79xn.onrender.com',
-        'https://lost-found-ashen.vercel.app',
-        /\.vercel\.app$/
-      ]
+      ? [...buildAllowedOrigins(), /\.vercel\.app$/]
       : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3001'],
     methods: ['GET', 'POST'],
     credentials: true
@@ -68,15 +83,11 @@ app.use(helmet({
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
-      'https://lost-found-mcc.vercel.app',
-      'https://mcc-lost-found.vercel.app',
-      'https://lost-found-79xn.onrender.com',
-      'https://lost-found-ashen.vercel.app',
+      ...buildAllowedOrigins(),
       'http://localhost:3002',
       'http://localhost:3000',
       'http://10.10.54.72:3002',
       'http://10.10.54.72:3000',
-      ...(config.CORS_ORIGINS || [])
     ];
 
     // Strict origin checking in production
