@@ -143,12 +143,14 @@ export default function DashboardPage() {
       }
 
       await loadUserItems()
-      await loadPotentialMatches()
+
+      setLoading(false) // Render immediately after primary data loads!
+
+      // Load heavy potential matches asynchronously
+      loadPotentialMatches()
 
       // Initialize socket connection for chat
       socketManager.connect()
-
-      setLoading(false)
     }
 
     const handleItemSubmitted = () => {

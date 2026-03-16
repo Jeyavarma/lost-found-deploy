@@ -9,8 +9,7 @@ const emailService = require('../services/emailService');
 const config = require('../config/environment');
 const { SessionManager, blacklistToken } = require('../middleware/auth/sessionManager');
 const authMiddleware = require('../middleware/auth/authMiddleware');
-// Simple rate limiter
-const passwordResetLimiter = (req, res, next) => next();
+const { passwordResetLimiter } = require('../middleware/security/security');
 const router = express.Router();
 
 // Input sanitization helper
@@ -76,10 +75,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid email format' });
     }
 
-    // Validate password - TEMPORARILY DISABLED FOR TESTING
-    // if (!isValidPassword(password)) {
-    //   return res.status(400).json({ message: 'Invalid password format' });
-    // }
+    // Validate password
+    if (!isValidPassword(password)) {
+      return res.status(400).json({ message: 'Invalid password format' });
+    }
 
     const user = await User.findOne({ email });
 
@@ -332,12 +331,12 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    // Validate password strength - TEMPORARILY DISABLED FOR TESTING
-    // if (!isValidPassword(password)) {
-    //   return res.status(400).json({ 
-    //     error: 'Password must be 8-128 characters with uppercase, lowercase, number, and special character' 
-    //   });
-    // }
+    // Validate password strength
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        error: 'Password must be 8-128 characters with uppercase, lowercase, number, and special character'
+      });
+    }
 
     if (otp.length !== 6) {
       return res.status(400).json({ error: 'OTP must be 6 digits' });

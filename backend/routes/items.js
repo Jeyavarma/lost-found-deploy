@@ -13,6 +13,7 @@ const MatchingService = require('../services/matchingService');
 const { generateEmbedding, isConfigured } = require('../utils/openai');
 const { sendEmail } = require('../config/email');
 const pushService = require('../services/pushService');
+const visualAIService = require('../services/visualAI');
 const router = express.Router();
 
 // Helper to scrub PII for anonymous reports
@@ -346,6 +347,17 @@ router.post('/', uploadFields, uploadToCloudinary, optionalAuth, trackActivity('
       if (req.files.itemImage) {
         itemData.imageUrl = req.files.itemImage[0].path;
         console.log('📷 Item image uploaded:', itemData.imageUrl);
+
+        // Extract semantic image embeddings using CLIP
+        try {
+          console.log('🧠 Extracting CLIP features for the new item image...');
+          const features = await visualAIService.extractFeatures(itemData.imageUrl);
+          if (features) {
+            itemData.imageFeatures = features;
+          }
+        } catch (e) {
+          console.error('⚠️ Failed to extract image features', e);
+        }
       }
       if (req.files.locationImage) {
         itemData.locationImageUrl = req.files.locationImage[0].path;
@@ -370,6 +382,15 @@ router.post('/', uploadFields, uploadToCloudinary, optionalAuth, trackActivity('
       }
     }
 
+    // Ignore legacy client-side TFJS imageFeatures (1024-dim),
+    // as we now use backend CLIP embeddings (512-dim).
+    if (req.body.detectedObjects) {
+      itemData.detectedObjects = req.body.detectedObjects;
+    }
+    if (req.body.aiCategory) {
+      itemData.aiCategory = req.body.aiCategory;
+    }
+
     const item = new Item(itemData);
     await item.save();
 
@@ -392,18 +413,6 @@ router.post('/', uploadFields, uploadToCloudinary, optionalAuth, trackActivity('
       });
       await transaction.save();
     }
-
-    // Handle AI features if provided
-    if (req.body.imageFeatures) {
-      item.imageFeatures = req.body.imageFeatures;
-    }
-    if (req.body.detectedObjects) {
-      item.detectedObjects = req.body.detectedObjects;
-    }
-    if (req.body.aiCategory) {
-      item.aiCategory = req.body.aiCategory;
-    }
-    await item.save();
 
     // Images stored for display only - matching uses text analysis
     console.log('ℹ️ Item saved with text-based matching enabled');
@@ -442,8 +451,8 @@ router.post('/', uploadFields, uploadToCloudinary, optionalAuth, trackActivity('
             if (lostItem.reportedBy && lostItem.reportedBy.email && lostItem.contactEmail) {
               const emailTo = lostItem.contactEmail || lostItem.reportedBy.email;
               const subject = `Good news! Someone may have found your ${lostItem.title}`;
-              const text = `Hi ${lostItem.contactName || lostItem.reportedBy.name},\n\nGood news! A newly submitted found item closely matches your lost item "${lostItem.title}".\n\nFound Item: ${item.title}\nLocation: ${item.location}\n\nLog in to the MCC Lost & Found portal to view the item and start a chat with the finder.\n\nhttps://lost-found-mcc.vercel.app/items/${item._id}\n\n— MCC Lost & Found System`;
-              const html = `<div style="font-family:sans-serif;max-width:600px;margin:auto;"><h2 style="color:#b91c1c;">🎉 Good News!</h2><p>Hi <strong>${lostItem.contactName || lostItem.reportedBy.name}</strong>,</p><p>A newly submitted Found Item closely matches your lost item <strong>"${lostItem.title}"</strong>.</p><table style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;width:100%;"><tr><td><strong>Found Item:</strong></td><td>${item.title}</td></tr><tr><td><strong>Location:</strong></td><td>${item.location}</td></tr></table><br><a href="https://lost-found-mcc.vercel.app/items/${item._id}" style="background:#16a34a;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">View Item & Start Chat</a><br><br><p style="color:#9ca3af;font-size:12px;">— MCC Lost & Found Automated System</p></div>`;
+              const text = `Hi ${lostItem.contactName || lostItem.reportedBy.name},\n\nGood news! A newly submitted found item closely matches your lost item "${lostItem.title}".\n\nFound Item: ${item.title}\nLocation: ${item.location}\n\nLog in to the MCC Lost & Found portal to view the item and start a chat with the finder.\n\n${process.env.FRONTEND_URL || 'https://lost-found-mcc.vercel.app'}/items/${item._id}\n\n— MCC Lost & Found System`;
+              const html = `<div style="font-family:sans-serif;max-width:600px;margin:auto;"><h2 style="color:#b91c1c;">🎉 Good News!</h2><p>Hi <strong>${lostItem.contactName || lostItem.reportedBy.name}</strong>,</p><p>A newly submitted Found Item closely matches your lost item <strong>"${lostItem.title}"</strong>.</p><table style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;width:100%;"><tr><td><strong>Found Item:</strong></td><td>${item.title}</td></tr><tr><td><strong>Location:</strong></td><td>${item.location}</td></tr></table><br><a href="${process.env.FRONTEND_URL || 'https://lost-found-mcc.vercel.app'}/items/${item._id}" style="background:#16a34a;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">View Item & Start Chat</a><br><br><p style="color:#9ca3af;font-size:12px;">— MCC Lost & Found Automated System</p></div>`;
               await sendEmail(emailTo, subject, text, html);
 
               // Add push notification
@@ -594,11 +603,20 @@ router.get('/:id', trackActivity('view_item'), async (req, res) => {
 
 router.put('/:id', auth, async (req, res) => {
   try {
-    const item = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true })
-      .populate('reportedBy', 'name email');
+    const item = await Item.findById(req.params.id);
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
+
+    const isAdmin = req.user && req.user.role === 'admin';
+    if (item.reportedBy && item.reportedBy.toString() !== req.userId && !isAdmin) {
+      return res.status(403).json({ message: 'Not authorized to update this item' });
+    }
+
+    Object.assign(item, req.body);
+    await item.save();
+
+    await item.populate('reportedBy', 'name email');
     await clearCache();
     res.json(item);
   } catch (error) {

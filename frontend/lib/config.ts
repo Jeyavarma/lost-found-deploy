@@ -1,1 +1,1 @@
-export const BACKEND_URL = '' // Empty string forces relative paths through Next.js rewrite proxy
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '' // Empty string forces relative paths through Next.js rewrite proxy

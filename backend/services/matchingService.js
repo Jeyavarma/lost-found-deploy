@@ -1,6 +1,7 @@
 const Item = require('../models/Item');
 const { setCache } = require('../config/redis-replacement');
 const { isConfigured } = require('../utils/openai');
+const visualAIService = require('../services/visualAI');
 
 class MatchingService {
   static async computeMatches(userId) {
@@ -9,6 +10,13 @@ class MatchingService {
       if (userItems.length === 0) return [];
 
       let allMatches = [];
+
+      // OPTIMIZATION: Fetch potential candidates ONCE for all user items
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const allRecentCandidates = await Item.find({
+        reportedBy: { $ne: userId },
+        createdAt: { $gte: thirtyDaysAgo }
+      }).lean();
 
       for (const userItem of userItems) {
         const oppositeStatus = userItem.status === 'lost' ? 'found' : 'lost';
@@ -95,15 +103,41 @@ class MatchingService {
         if (usedAdvancedMatch) continue; // Skip level 3 if text search found results
 
         // -------------------------------------------------------------
+        // LEVEL 2.5: CLIP Image Embeddings Match (Local)
+        // -------------------------------------------------------------
+        let foundImageMatch = false;
+        if (userItem.imageFeatures && userItem.imageFeatures.length > 0) {
+          try {
+            const imageCandidates = allRecentCandidates.filter(item =>
+              item.status === oppositeStatus &&
+              item.imageFeatures &&
+              item.imageFeatures.length > 0
+            );
+
+            for (const item of imageCandidates) {
+              if (item.imageFeatures && item.imageFeatures.length > 0) {
+                const similarity = visualAIService.cosineSimilarity(userItem.imageFeatures, item.imageFeatures);
+                // CLIP similarity >= 0.82 is typically a good match threshold
+                if (similarity >= 0.82) {
+                  const normalizedScore = Math.min((similarity - 0.70) * (100 / 0.30), 100);
+                  allMatches.push({ ...item, matchScore: normalizedScore, matchMethod: 'Visual AI (CLIP)', matchedUserItem: userItem });
+                  foundImageMatch = true;
+                }
+              }
+            }
+          } catch (clipError) {
+            console.error('⚠️ CLIP Image Match failed:', clipError.message);
+          }
+        }
+
+        if (foundImageMatch) continue; // Skip heuristic if we got high-confidence image matches
+
+        // -------------------------------------------------------------
         // LEVEL 3: Classic Heuristic (Final Fallback)
         // -------------------------------------------------------------
-        const recentItems = await Item.find({
-          status: oppositeStatus,
-          reportedBy: { $ne: userId },
-          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
-        }).lean();
+        const heuristicCandidates = allRecentCandidates.filter(item => item.status === oppositeStatus);
 
-        recentItems.forEach(item => {
+        heuristicCandidates.forEach(item => {
           const score = this.calculateMatchScore(userItem, item);
           if (score >= 15) {
             allMatches.push({ ...item, matchScore: Math.min(score, 100), matchMethod: 'Heuristic', matchedUserItem: userItem });

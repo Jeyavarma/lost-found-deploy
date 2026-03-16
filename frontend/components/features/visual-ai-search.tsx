@@ -18,7 +18,6 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react'
-import { processImage, processImageFromUrl, calculateSimilarity, suggestCategoryFromObjects, initializeModels } from '@/lib/visual-ai'
 import { BACKEND_URL } from '@/lib/config'
 import { getAuthToken } from '@/lib/auth'
 import { toast } from 'sonner'
@@ -52,20 +51,6 @@ export default function VisualAISearch() {
     }
   }
 
-  const loadModels = async () => {
-    if (modelsReady) return
-
-    setModelLoading(true)
-    try {
-      await initializeModels()
-      setModelsReady(true)
-    } catch (error) {
-      console.error('Failed to load AI models:', error)
-    } finally {
-      setModelLoading(false)
-    }
-  }
-
   const performVisualSearch = async () => {
     if (!selectedImage && !searchQuery.trim()) {
       toast.error('Please upload an image or enter a search query')
@@ -74,96 +59,50 @@ export default function VisualAISearch() {
 
     setLoading(true)
     try {
-      let imageFeatures: number[] = []
-      let objects: any[] = []
-      let aiCategory = ''
-
-      // Process image if provided
       if (selectedImage) {
-        await loadModels()
-        const result = await processImage(selectedImage)
-        imageFeatures = result.features
-        objects = result.objects
-        aiCategory = suggestCategoryFromObjects(objects)
+        const formData = new FormData()
+        formData.append('image', selectedImage)
+        formData.append('threshold', '0.6')
+        if (searchQuery.trim()) {
+          // Send text as a loose category filter constraint for the visual query
+          formData.append('category', searchQuery.trim())
+        }
 
-        setDetectedObjects(objects)
-        setSuggestedCategory(aiCategory)
-      }
-
-      // Get all items for comparison
-      const response = await fetch(`${BACKEND_URL}/api/items`)
-      if (!response.ok) throw new Error('Failed to fetch items')
-
-      const allItems = await response.json()
-      const matches: VisualMatch[] = []
-
-      // Visual similarity matching
-      if (imageFeatures.length > 0) {
-        allItems.forEach((item: any) => {
-          if (item.imageFeatures && item.imageFeatures.length > 0) {
-            const similarity = calculateSimilarity(imageFeatures, item.imageFeatures)
-
-            if (similarity > 0.7) {
-              matches.push({
-                item,
-                similarity,
-                confidence: similarity > 0.9 ? 'High' : similarity > 0.8 ? 'Medium' : 'Low',
-                matchType: 'visual'
-              })
-            }
-          }
+        const token = getAuthToken()
+        const response = await fetch(`${BACKEND_URL}/api/visual-ai/search`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
         })
-      }
 
-      // Text-based matching (existing algorithm)
-      if (searchQuery.trim()) {
+        const data = await response.json()
+        if (response.ok) {
+          setMatches(data.results || [])
+        } else {
+          throw new Error(data.error || 'Visual search failed')
+        }
+      } else if (searchQuery.trim()) {
+        // Fallback for purely text-based search querying all items
+        const response = await fetch(`${BACKEND_URL}/api/items`)
+        if (!response.ok) throw new Error('Failed to fetch items')
+
+        const allItems = await response.json()
         const textMatches = allItems.filter((item: any) => {
           const text = `${item.title} ${item.description} ${item.category}`.toLowerCase()
           return text.includes(searchQuery.toLowerCase())
         })
 
-        textMatches.forEach((item: any) => {
-          const existingMatch = matches.find(m => m.item._id === item._id)
-          if (existingMatch) {
-            // Combine visual and text match
-            existingMatch.matchType = 'combined'
-            existingMatch.similarity = Math.min(1, existingMatch.similarity + 0.1)
-          } else {
-            matches.push({
-              item,
-              similarity: 0.6, // Base score for text matches
-              confidence: 'Medium',
-              matchType: 'text'
-            })
-          }
-        })
+        const formattedMatches = textMatches.map((item: any) => ({
+          item,
+          similarity: 0.6,
+          confidence: 'Medium',
+          matchType: 'text'
+        }))
+
+        setMatches(formattedMatches.slice(0, 10))
       }
-
-      // Category matching if AI detected objects
-      if (aiCategory && aiCategory !== 'Other') {
-        const categoryMatches = allItems.filter((item: any) =>
-          item.category?.toLowerCase() === aiCategory.toLowerCase()
-        )
-
-        categoryMatches.forEach((item: any) => {
-          const existingMatch = matches.find(m => m.item._id === item._id)
-          if (!existingMatch) {
-            matches.push({
-              item,
-              similarity: 0.5,
-              confidence: 'Low',
-              matchType: 'text'
-            })
-          }
-        })
-      }
-
-      // Sort by similarity and limit results
-      const sortedMatches = matches
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 10)
-
-      setMatches(sortedMatches)
     } catch (error) {
       console.error('Search error:', error)
       toast.error('Search failed. Please try again.')
@@ -189,7 +128,9 @@ export default function VisualAISearch() {
       <DialogTrigger asChild>
         <Button
           className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg"
-          onClick={loadModels}
+          onClick={() => {
+            // Ensure any previous client-side models are ignored
+          }}
         >
           <Brain className="w-4 h-4 mr-2" />
           AI Visual Search
@@ -361,7 +302,7 @@ export default function VisualAISearch() {
                           <div className="flex items-center gap-2 mb-2">
                             <h4 className="font-semibold">{match.item.title}</h4>
                             <Badge className={`${match.confidence === 'High' ? 'bg-green-500' :
-                                match.confidence === 'Medium' ? 'bg-yellow-500' : 'bg-gray-500'
+                              match.confidence === 'Medium' ? 'bg-yellow-500' : 'bg-gray-500'
                               } text-white`}>
                               {match.confidence} Match
                             </Badge>

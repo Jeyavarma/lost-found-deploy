@@ -23,6 +23,8 @@ export default function ReportPage() {
     floor: "",
     room: "",
     status: "lost",
+    contactName: "",
+    contactEmail: "",
     contactInfo: "",
     dateLostFound: "",
     timeLostFound: ""
@@ -110,7 +112,7 @@ export default function ReportPage() {
         submitData.append('bypassDuplicate', 'true')
       }
 
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('mcc_auth_token') || localStorage.getItem('token')
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://lost-found-backend-u3bx.onrender.com'}/api/items`, {
         method: "POST",
         headers: {
@@ -494,15 +496,40 @@ export default function ReportPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="contactName" className="text-sm font-medium mcc-text-primary">Your Name *</Label>
+                  <Input
+                    name="contactName"
+                    value={formData.contactName}
+                    onChange={handleInputChange}
+                    placeholder="Your full name"
+                    className="h-12 focus:ring-brand-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="contactEmail" className="text-sm font-medium mcc-text-primary">Email Address *</Label>
+                  <Input
+                    name="contactEmail"
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={handleInputChange}
+                    placeholder="Your email address"
+                    className="h-12 focus:ring-brand-primary"
+                    required
+                  />
+                </div>
+              </div>
+
               <div>
-                <Label htmlFor="contactInfo" className="text-sm font-medium mcc-text-primary">Contact Information *</Label>
+                <Label htmlFor="contactInfo" className="text-sm font-medium mcc-text-primary">Phone Number (Optional)</Label>
                 <Input
                   name="contactInfo"
                   value={formData.contactInfo}
                   onChange={handleInputChange}
-                  placeholder="Your email or phone number"
+                  placeholder="Your phone number"
                   className="h-12 focus:ring-brand-primary"
-                  required
                 />
               </div>
 

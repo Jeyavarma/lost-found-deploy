@@ -68,25 +68,12 @@ function LoginPageContent() {
     setError("")
   }
 
-  const addLog = (msg: string) => {
-    console.log("[DEBUG]", msg);
-    const el = document.getElementById("debug-log");
-    if (el) {
-      const p = document.createElement("p");
-      p.textContent = msg;
-      el.appendChild(p);
-    }
-  }
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
-    addLog("STEP 1: Starting login process...");
-
     try {
-      addLog(`STEP 2: Fetching from ${BACKEND_URL}/api/auth/login`);
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: "POST",
         headers: {
@@ -95,14 +82,10 @@ function LoginPageContent() {
         body: JSON.stringify({ ...formData, role: selectedPortal }),
       });
 
-      addLog(`STEP 3: Response received with status: ${response.status}`);
-
       const data = await response.json();
-      addLog("STEP 4: JSON parsed successfully");
 
       if (response.ok) {
         try {
-          addLog("STEP 5: Login OK, storing auth data...");
           // Store auth data using the auth utility
           setAuthToken(data.token);
           setUserData({
@@ -117,7 +100,6 @@ function LoginPageContent() {
           localStorage.setItem("userName", data.name);
           localStorage.setItem("token", data.token);
 
-          addLog("STEP 6: Setting window.location.href...");
           const returnUrl = searchParams.get("returnUrl")
           if (returnUrl) {
             window.location.href = returnUrl
@@ -125,12 +107,10 @@ function LoginPageContent() {
             window.location.href = "/dashboard"
           }
         } catch (storageErr: any) {
-          addLog(`ERROR in STEP 5/6: Storage ${storageErr.message}`);
           console.error("Storage error:", storageErr);
           setError("Storage configuration error.");
         }
       } else {
-        addLog(`STEP 5b: Login failed structurally: ${data.message || data.error}`);
         console.warn("Login failed:", data.message || data.error);
         if (response.status === 429) {
           setError(data.error || "Too many login attempts. Please wait 15 minutes before trying again.");
@@ -139,12 +119,10 @@ function LoginPageContent() {
         }
       }
     } catch (err: any) {
-      addLog(`ERROR in STEP 2/3/4: Network ${err.message}`);
       console.error("Login error:", err);
       setError("Failed to connect to the server. Please try again later.");
     } finally {
       setIsLoading(false);
-      addLog("STEP 7: Finished. setIsLoading(false) called.");
     }
   }
 
@@ -420,10 +398,6 @@ function LoginPageContent() {
                       `Sign In to ${portalInfo.title}`
                     )}
                   </Button>
-
-                  <div id="debug-log" className="mt-4 p-4 bg-gray-900 text-green-400 font-mono text-xs rounded-md overflow-y-auto max-h-40 border border-gray-700 break-words empty:hidden">
-                    {/* Debug logs will be injected here */}
-                  </div>
                 </form>
 
                 <div className="text-center space-y-4">
