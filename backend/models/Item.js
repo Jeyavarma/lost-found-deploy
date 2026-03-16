@@ -107,6 +107,10 @@ const itemSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+itemSchema.index({ reportedBy: 1, createdAt: -1 });
+itemSchema.index({ status: 1, category: 1 });
+itemSchema.index({ createdAt: -1 });
+
 // --- Level 1 AI Match Fallback: Compound Text Index ---
 // This enables fast keyword matching ($text search) on strings
 // if OpenAI embeddings are unavailable or lack results.
