@@ -1,6 +1,8 @@
 const db = require('../models');
-const bcrypt = require('bcryptjs');
+const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
+const { SessionManager } = require('../middleware/auth/sessionManager');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -13,23 +15,27 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'Roll number is required.' });
     }
 
-    // Check if user already exists
-    const { Op } = require('sequelize');
+    // Optimized: Single query to check all unique fields
+    const existingUser = await db.User.findOne({
+      where: {
+        [Op.or]: [
+          { email: { [Op.iLike]: email } },
+          { studentId: { [Op.iLike]: studentId } },
+          { rollNumber: { [Op.iLike]: rollNumber } }
+        ]
+      }
+    });
 
-    // Check if user already exists
-    const existingUser = await db.User.findOne({ where: { email: { [Op.iLike]: email } } });
     if (existingUser) {
-      return res.status(400).json({ message: 'User with this email already exists.' });
-    }
-
-    const existingStudentId = await db.User.findOne({ where: { studentId: { [Op.iLike]: studentId } } });
-    if (existingStudentId) {
-      return res.status(400).json({ message: 'User with this student ID already exists.' });
-    }
-
-    const existingRollNumber = await db.User.findOne({ where: { rollNumber: { [Op.iLike]: rollNumber } } });
-    if (existingRollNumber) {
-      return res.status(400).json({ message: 'User with this roll number already exists.' });
+      if (existingUser.email.toLowerCase() === email.toLowerCase()) {
+        return res.status(400).json({ message: 'User with this email already exists.' });
+      }
+      if (existingUser.studentId === studentId) {
+        return res.status(400).json({ message: 'User with this student ID already exists.' });
+      }
+      if (existingUser.rollNumber === rollNumber) {
+        return res.status(400).json({ message: 'User with this roll number already exists.' });
+      }
     }
 
     // Create new user (password will be hashed by the model hook)
@@ -45,8 +51,6 @@ const register = async (req, res) => {
       password,
     });
 
-    // Generate JWT
-    const { SessionManager } = require('../middleware/auth/sessionManager');
     const token = SessionManager.generateToken({ id: newUser.id }, { expiresIn: '1h' });
 
     res.status(201).json({
@@ -73,14 +77,11 @@ const login = async (req, res) => {
     return res.status(400).json({ message: 'Please provide both email and password.' });
   }
 
-  try {
     // Check for user
-    const { Op } = require('sequelize');
     const user = await db.User.findOne({ where: { email: email.toLowerCase() } });
 
     if (user && (await user.isValidPassword(password))) {
       // Create token
-      const { SessionManager } = require('../middleware/auth/sessionManager');
       const token = SessionManager.generateToken({ id: user.id, role: user.role }, { expiresIn: '30d' });
 
       res.json({

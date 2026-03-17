@@ -180,13 +180,14 @@ router.post('/login', async (req, res) => {
       }
     }).catch(err => console.error('Activity logging error:', err));
 
-    // Update last login and online status
-    user.lastLogin = new Date();
-    user.lastSeen = new Date();
-    user.isOnline = true;
-    user.deviceType = userAgent?.includes('Mobile') ? 'mobile' : 'desktop';
-    user.loginAttempts = 0; // Reset failed attempts
-    user.save().catch(err => console.error('User update error:', err));
+    // OPTIMIZED: Batch update in single operation
+    User.findByIdAndUpdate(user._id, {
+      lastLogin: new Date(),
+      lastSeen: new Date(),
+      isOnline: true,
+      deviceType: userAgent?.includes('Mobile') ? 'mobile' : 'desktop',
+      loginAttempts: 0
+    }).catch(err => console.error('User update error:', err));
 
     const token = SessionManager.generateToken({ userId: user._id });
 
@@ -229,10 +230,33 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Invalid email format' });
     }
 
-    const existingUser = await User.findOne({ email });
+    // Validate password strength
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        message: 'Password must be 8-128 characters with uppercase, lowercase, number, and special character'
+      });
+    }
+
+    // OPTIMIZED: Single query to check all unique fields
+    const existingUser = await User.findOne({
+      $or: [
+        { email },
+        ...(studentId ? [{ studentId }] : []),
+        ...(rollNumber ? [{ rollNumber }] : [])
+      ]
+    });
+
     if (existingUser) {
-      console.warn(`❌ Registration failed: User ${email} already exists`);
-      return res.status(400).json({ message: 'User already exists' });
+      if (existingUser.email === email) {
+        console.warn(`❌ Registration failed: User ${email} already exists`);
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+      if (studentId && existingUser.studentId === studentId) {
+        return res.status(400).json({ message: 'User with this student ID already exists' });
+      }
+      if (rollNumber && existingUser.rollNumber === rollNumber) {
+        return res.status(400).json({ message: 'User with this roll number already exists' });
+      }
     }
 
     // Prevent admin creation through regular registration

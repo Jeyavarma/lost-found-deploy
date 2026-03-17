@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -43,13 +43,20 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  // Changed salt rounds from 10 to 8 to significantly speed up signup/login on Render Free Tier
-  this.password = await bcrypt.hash(this.password, 8);
+  // Optimized: Reduced salt rounds to 6 for Render free tier performance
+  this.password = await bcryptjs.hash(this.password, 6);
   next();
 });
 
 userSchema.methods.comparePassword = async function (password) {
-  return bcrypt.compare(password, this.password);
+  return bcryptjs.compare(password, this.password);
 };
+
+// Performance indexes
+userSchema.index({ email: 1 });
+userSchema.index({ studentId: 1 }, { sparse: true });
+userSchema.index({ rollNumber: 1 }, { sparse: true });
+userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ lastLogin: -1 });
 
 module.exports = mongoose.model('User', userSchema);

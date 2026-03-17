@@ -99,19 +99,22 @@ app.use(cors({
         return callback(null, true);
       }
 
-      // Only allow exact matches or verified Vercel subdomains
+      // SECURITY: Strict origin validation in production
+      // Only allow exact matches from environment variables
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      // Check for Vercel preview or other subdomains if not exact match
-      const isVercelSubdomain = origin.match(/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/);
-      if (isVercelSubdomain) {
-        return callback(null, true);
+      // Allow Vercel preview deployments only if explicitly configured
+      if (process.env.ALLOW_VERCEL_PREVIEWS === 'true') {
+        const isVercelSubdomain = origin.match(/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/);
+        if (isVercelSubdomain) {
+          return callback(null, true);
+        }
       }
 
-      console.warn(`⚠️ CORS block: Origin ${origin} is not in allowed list`);
-      return callback(null, false);
+      console.warn(`⚠️ CORS blocked: ${origin}`);
+      return callback(new Error('Not allowed by CORS'));
     } else {
       // Development - allow dev origins and no origin
       if (!origin || allowedOrigins.includes(origin)) {
@@ -137,10 +140,13 @@ app.use('/api/auth/register', (req, res, next) => {
 
 mongoose.connect(config.MONGODB_URI)
   .then(() => {
-    console.log('Connected to MongoDB');
-    // Initialize Redis and background services
-    // connectRedis();
-    // MatchingService.scheduleMatchUpdates(); // Disabled: Too heavy for Render Free Tier CPU during startup
+    console.log('✅ Connected to MongoDB');
+    // Initialize Redis and background services (conditionally)
+    if (config.NODE_ENV === 'production') {
+      connectRedis().catch(err => console.warn('Redis connection failed:', err));
+    }
+    // Disabled: Too heavy for Render Free Tier CPU during startup
+    // MatchingService.scheduleMatchUpdates();
   })
   .catch(err => {
     console.error('MongoDB connection error:', err)
