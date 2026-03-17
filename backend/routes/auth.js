@@ -75,9 +75,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid email format' });
     }
 
-    // Validate password
-    if (!isValidPassword(password)) {
-      return res.status(400).json({ message: 'Invalid password format' });
+    // Note: Don't validate password format on login - only check if it exists
+    // Password format validation is only for registration
+    if (!password) {
+      return res.status(400).json({ message: 'Password is required' });
     }
 
     const user = await User.findOne({ email });
