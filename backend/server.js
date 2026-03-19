@@ -37,6 +37,7 @@ const buildAllowedOrigins = () => {
     'https://lost-found-79xn.onrender.com',
     'https://lost-found-backend-u3bx.onrender.com',
     'https://lost-found-ashen.vercel.app',
+    'https://lost-found-deploy-iuzo.vercel.app',
   ];
   // FRONTEND_URL env var: single URL for the primary frontend (e.g. your Vercel URL)
   if (process.env.FRONTEND_URL) {
