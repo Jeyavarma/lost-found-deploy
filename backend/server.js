@@ -55,7 +55,7 @@ const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
       ? [...buildAllowedOrigins(), /\.vercel\.app$/]
-      : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3001'],
+      : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3001' , 'https://lost-found-deploy-iuzo.vercel.app'],
     methods: ['GET', 'POST'],
     credentials: true
   }
