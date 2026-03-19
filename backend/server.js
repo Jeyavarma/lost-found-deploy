@@ -38,6 +38,7 @@ const buildAllowedOrigins = () => {
     'https://lost-found-backend-u3bx.onrender.com',
     'https://lost-found-ashen.vercel.app',
     'https://lost-found-deploy-iuzo.vercel.app',
+    'https://lost-found-deploy.onrender.com',
   ];
   // FRONTEND_URL env var: single URL for the primary frontend (e.g. your Vercel URL)
   if (process.env.FRONTEND_URL) {
@@ -55,8 +56,8 @@ const buildAllowedOrigins = () => {
 const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
-      ? [...buildAllowedOrigins(), /\.vercel\.app$/]
-      : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3001' , 'https://lost-found-deploy-iuzo.vercel.app'],
+      ? [...buildAllowedOrigins(), /\.vercel\.app$/, /\.onrender\.com$/]
+      : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3001'],
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -106,12 +107,9 @@ app.use(cors({
         return callback(null, true);
       }
 
-      // Allow Vercel preview deployments only if explicitly configured
-      if (process.env.ALLOW_VERCEL_PREVIEWS === 'true') {
-        const isVercelSubdomain = origin.match(/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/);
-        if (isVercelSubdomain) {
-          return callback(null, true);
-        }
+      // Allow Vercel and Render deployments
+      if (origin.match(/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/) || origin.match(/^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/)) {
+        return callback(null, true);
       }
 
       console.warn(`⚠️ CORS blocked: ${origin}`);
