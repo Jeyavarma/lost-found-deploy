@@ -66,6 +66,13 @@ const io = socketIo(server, {
 // Trust proxy for rate limiting on Render
 app.set('trust proxy', 1);
 
+// Set request timeout (30 seconds)
+app.use((req, res, next) => {
+  req.setTimeout(30000);
+  res.setTimeout(30000);
+  next();
+});
+
 // Compression middleware
 app.use(compression());
 
@@ -122,10 +129,9 @@ app.use(cors({
       return callback(null, false);
     }
   },
-  credentials: true,
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept', 'X-Request-ID'],
-  exposedHeaders: ['X-Request-ID'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   maxAge: 86400 // 24 hours preflight cache
 }));
 app.use(securityHeaders);
@@ -137,15 +143,21 @@ app.use('/api/auth/register', (req, res, next) => {
   next();
 });
 
-mongoose.connect(config.MONGODB_URI)
+mongoose.connect(config.MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 10000,
+  retryWrites: true,
+  w: 'majority'
+})
   .then(() => {
     console.log('✅ Connected to MongoDB');
-    // Initialize Redis and background services (conditionally)
+    // Initialize Redis asynchronously (don't block startup)
     if (config.NODE_ENV === 'production') {
-      connectRedis().catch(err => console.warn('Redis connection failed:', err));
+      setImmediate(() => {
+        connectRedis().catch(err => console.warn('Redis connection failed:', err));
+      });
     }
-    // Disabled: Too heavy for Render Free Tier CPU during startup
-    // MatchingService.scheduleMatchUpdates();
   })
   .catch(err => {
     console.error('MongoDB connection error:', err)
@@ -194,7 +206,8 @@ app.post('/api/auth/create-first-admin', express.json(), async (req, res) => {
   }
 });
 
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth/login', authLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/items', apiLimiter, itemRoutes);
 app.use('/api/homepage', cacheMiddleware(30000), require('./routes/homepage')); // 30 second cache
 app.use('/api/claims', apiLimiter, require('./routes/claims'));

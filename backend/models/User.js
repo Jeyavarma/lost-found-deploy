@@ -43,13 +43,18 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  // Optimized: Reduced salt rounds to 6 for Render free tier performance
-  this.password = await bcryptjs.hash(this.password, 6);
+  // Optimized: Reduced salt rounds to 4 for faster hashing on Render free tier
+  this.password = await bcryptjs.hash(this.password, 4);
   next();
 });
 
 userSchema.methods.comparePassword = async function (password) {
-  return bcryptjs.compare(password, this.password);
+  try {
+    return await bcryptjs.compare(password, this.password);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
 };
 
 // Performance indexes

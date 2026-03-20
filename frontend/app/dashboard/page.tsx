@@ -146,14 +146,16 @@ export default function DashboardPage() {
       }
 
       await loadUserItems()
-
       setLoading(false) // Render immediately after primary data loads!
 
       // Load heavy potential matches asynchronously
       loadPotentialMatches()
 
-      // Initialize socket connection for chat
-      socketManager.connect()
+      // Initialize socket connection after dashboard is rendered
+      // Use requestAnimationFrame to ensure DOM is fully painted
+      requestAnimationFrame(() => {
+        socketManager.connect()
+      })
     }
 
     const handleItemSubmitted = () => {

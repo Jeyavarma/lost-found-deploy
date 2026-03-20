@@ -12,31 +12,52 @@ const authMiddleware = require('../middleware/auth/authMiddleware');
 const { passwordResetLimiter } = require('../middleware/security/security');
 const router = express.Router();
 
+// Input sanitization helper
 const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
   return validator.escape(input.trim());
 };
 
+// Email validation helper
 const isValidEmail = (email) => {
   return validator.isEmail(email) && email.length <= 254;
 };
 
+// Strong password validation helper
 const isValidPassword = (password) => {
   if (!password || password.length < 8 || password.length > 128) return false;
+
+  // Must contain at least one uppercase, lowercase, number, and special character
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
   const hasNumber = /\d/.test(password);
   const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
   return hasUpper && hasLower && hasNumber && hasSpecial;
 };
 
-// OPTIMIZED LOGIN - Fast path with early password verification
+// Password strength checker
+const getPasswordStrength = (password) => {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+  if (score < 3) return 'weak';
+  if (score < 5) return 'medium';
+  return 'strong';
+};
+
 router.post('/login', async (req, res) => {
   try {
     let { email, password } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent');
 
+    // Input validation and sanitization
     if (!email || !password) {
       LoginAttempt.create({
         email: email || 'unknown',
@@ -48,54 +69,22 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
+    // Sanitize and validate email
     email = email.toLowerCase().trim();
     if (!isValidEmail(email)) {
       return res.status(400).json({ message: 'Invalid email format' });
     }
 
-    // OPTIMIZATION: Use lean() for initial query - no need for full document yet
-    const userLean = await User.findOne({ email }).lean();
-    
-    if (!userLean) {
-      LoginAttempt.create({
-        email,
-        ipAddress,
-        userAgent,
-        success: false,
-        failureReason: 'Invalid credentials'
-      }).catch(err => console.error('Logging error:', err));
-      return res.status(401).json({ message: 'Invalid credentials' });
+    // Note: Don't validate password format on login - only check if it exists
+    // Password format validation is only for registration
+    if (!password) {
+      return res.status(400).json({ message: 'Password is required' });
     }
 
-    // Get full document only for password comparison
-    const user = await User.findById(userLean._id);
-    const passwordValid = await user.comparePassword(password);
-
-    if (!passwordValid) {
-      user.loginAttempts = (user.loginAttempts || 0) + 1;
-      user.lastFailedLogin = new Date();
-
-      if (user.loginAttempts >= 5) {
-        user.accountLocked = true;
-        user.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
-      }
-
-      user.save().catch(err => console.error('User update error:', err));
-
-      LoginAttempt.create({
-        email,
-        ipAddress,
-        userAgent,
-        success: false,
-        failureReason: 'Invalid credentials',
-        userId: user._id
-      }).catch(err => console.error('Logging error:', err));
-
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+    const user = await User.findOne({ email });
 
     // Check if account is locked
-    if (user.accountLocked && user.lockedUntil && new Date() < user.lockedUntil) {
+    if (user && user.accountLocked && user.lockedUntil && new Date() < user.lockedUntil) {
       LoginAttempt.create({
         email,
         ipAddress,
@@ -113,7 +102,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Auto-unlock if lock period expired
-    if (user.accountLocked && user.lockedUntil && new Date() >= user.lockedUntil) {
+    if (user && user.accountLocked && user.lockedUntil && new Date() >= user.lockedUntil) {
       user.accountLocked = false;
       user.lockedUntil = null;
       user.loginAttempts = 0;
@@ -121,7 +110,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Check if user is suspended
-    if (!user.isActive) {
+    if (user && !user.isActive) {
       const suspendedUntil = user.suspendedUntil;
       if (!suspendedUntil || new Date() < suspendedUntil) {
         LoginAttempt.create({
@@ -138,6 +127,7 @@ router.post('/login', async (req, res) => {
           suspendedUntil: suspendedUntil
         });
       } else {
+        // Auto-unsuspend if suspension period expired
         user.isActive = true;
         user.suspendedUntil = null;
         user.suspensionReason = null;
@@ -145,7 +135,34 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // Successful login - log and update asynchronously
+    if (!user || !(await user.comparePassword(password))) {
+      // Track failed login attempts
+      if (user) {
+        user.loginAttempts = (user.loginAttempts || 0) + 1;
+        user.lastFailedLogin = new Date();
+
+        // Lock account after 5 failed attempts
+        if (user.loginAttempts >= 5) {
+          user.accountLocked = true;
+          user.lockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        }
+
+        user.save().catch(err => console.error('User update error:', err));
+      }
+
+      LoginAttempt.create({
+        email,
+        ipAddress,
+        userAgent,
+        success: false,
+        failureReason: 'Invalid credentials',
+        userId: user?._id
+      }).catch(err => console.error('Logging error:', err));
+
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Successful login
     LoginAttempt.create({
       email,
       ipAddress,
@@ -154,18 +171,24 @@ router.post('/login', async (req, res) => {
       userId: user._id
     }).catch(err => console.error('Logging error:', err));
 
+    // Log user activity
     UserActivity.create({
       userId: user._id,
       action: 'login',
-      details: { ipAddress, userAgent }
+      details: {
+        ipAddress,
+        userAgent
+      }
     }).catch(err => console.error('Activity logging error:', err));
 
-    user.lastLogin = new Date();
-    user.lastSeen = new Date();
-    user.isOnline = true;
-    user.deviceType = userAgent?.includes('Mobile') ? 'mobile' : 'desktop';
-    user.loginAttempts = 0;
-    user.save().catch(err => console.error('User update error:', err));
+    // OPTIMIZED: Batch update in single operation
+    User.findByIdAndUpdate(user._id, {
+      lastLogin: new Date(),
+      lastSeen: new Date(),
+      isOnline: true,
+      deviceType: userAgent?.includes('Mobile') ? 'mobile' : 'desktop',
+      loginAttempts: 0
+    }).catch(err => console.error('User update error:', err));
 
     const token = SessionManager.generateToken({ userId: user._id });
 
@@ -177,7 +200,6 @@ router.post('/login', async (req, res) => {
       role: user.role
     });
   } catch (error) {
-    console.error('Login error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -187,11 +209,13 @@ router.post('/register', async (req, res) => {
     let { name, email, password, phone, studentId, shift, department, year, rollNumber, role } = req.body;
     console.debug(`📝 Registration attempt for: ${email}`);
 
+    // Input validation and sanitization
     if (!name || !email || !password) {
       console.warn('❌ Registration failed: Missing required fields');
       return res.status(400).json({ message: 'Name, email and password are required' });
     }
 
+    // Sanitize inputs
     name = sanitizeInput(name);
     email = email.toLowerCase().trim();
     phone = phone ? sanitizeInput(phone) : undefined;
@@ -201,17 +225,20 @@ router.post('/register', async (req, res) => {
     year = year ? sanitizeInput(year) : undefined;
     rollNumber = rollNumber ? sanitizeInput(rollNumber) : undefined;
 
+    // Validate email
     if (!isValidEmail(email)) {
       console.warn(`❌ Registration failed: Invalid email format ${email}`);
       return res.status(400).json({ message: 'Invalid email format' });
     }
 
+    // Validate password strength
     if (!isValidPassword(password)) {
       return res.status(400).json({
         message: 'Password must be 8-128 characters with uppercase, lowercase, number, and special character'
       });
     }
 
+    // OPTIMIZED: Single query to check all unique fields
     const existingUser = await User.findOne({
       $or: [
         { email },
@@ -233,6 +260,7 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    // Prevent admin creation through regular registration
     const userRole = (role === 'admin') ? 'student' : (role || 'student');
 
     console.debug('💾 Saving new user to database...');
@@ -251,6 +279,7 @@ router.post('/register', async (req, res) => {
     await user.save();
     console.debug(`✅ User ${email} saved successfully`);
 
+    // Send welcome email (non-blocking)
     emailService.sendWelcomeEmail(email, name).catch(err =>
       console.error('Failed to send welcome email:', err)
     );
@@ -275,6 +304,7 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     let { email } = req.body;
 
+    // Input validation and sanitization
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
@@ -286,16 +316,21 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
+      // Don't reveal if user exists or not for security
       return res.json({ message: 'If the email exists, an OTP has been sent' });
     }
 
+    // Generate secure OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // Clean up old OTPs for this email
     await OTP.deleteMany({ email });
     await new OTP({ email, otp }).save();
 
+    // Send OTP via email service
     const emailResult = await emailService.sendOTPEmail(email, otp);
 
+    // SECURITY: OTP is only sent via email, NOT returned in response
     res.json({
       message: 'OTP sent to your email',
       emailSent: emailResult.success
@@ -310,10 +345,12 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
   try {
     let { email, otp, password } = req.body;
 
+    // Input validation
     if (!email || !otp || !password) {
       return res.status(400).json({ error: 'Email, OTP and password are required' });
     }
 
+    // Sanitize and validate inputs
     email = email.toLowerCase().trim();
     otp = String(otp).replace(/[^0-9]/g, '');
 
@@ -321,6 +358,7 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
+    // Validate password strength
     if (!isValidPassword(password)) {
       return res.status(400).json({
         error: 'Password must be 8-128 characters with uppercase, lowercase, number, and special character'
@@ -344,6 +382,7 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
     user.password = password;
     await user.save();
 
+    // Clean up OTP after successful reset
     await OTP.deleteOne({ _id: otpDoc._id });
 
     res.json({ message: 'Password reset successfully' });
@@ -353,8 +392,12 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
   }
 });
 
+
+
+// Create first admin account (only if no admin exists)
 router.post('/create-first-admin', async (req, res) => {
   try {
+    // Check if any admin already exists
     const existingAdmin = await User.findOne({ role: 'admin' });
     if (existingAdmin) {
       return res.status(400).json({ message: 'Admin account already exists. Use login instead.' });
@@ -418,6 +461,7 @@ router.get('/validate', async (req, res) => {
   }
 });
 
+// Logout endpoint
 router.post('/logout', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -432,6 +476,7 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+// Push notification subscription
 router.post('/push-subscribe', authMiddleware, async (req, res) => {
   try {
     const { subscription } = req.body;

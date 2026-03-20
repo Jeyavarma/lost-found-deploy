@@ -74,13 +74,21 @@ function LoginPageContent() {
     setError("")
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest" // Prevents CORS preflight
         },
         body: JSON.stringify({ ...formData, role: selectedPortal }),
+        signal: controller.signal,
+        credentials: 'omit' // Don't send cookies to prevent preflight
       });
+
+      clearTimeout(timeoutId);
 
       const data = await response.json();
 
@@ -102,9 +110,9 @@ function LoginPageContent() {
 
           const returnUrl = searchParams.get("returnUrl")
           if (returnUrl) {
-            window.location.href = returnUrl
+            router.push(returnUrl)
           } else {
-            window.location.href = "/dashboard"
+            router.push("/dashboard")
           }
         } catch (storageErr: any) {
           console.error("Storage error:", storageErr);
@@ -120,7 +128,11 @@ function LoginPageContent() {
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      setError("Failed to connect to the server. Please try again later.");
+      if (err.name === 'AbortError') {
+        setError("Request timeout. Please check your connection and try again.");
+      } else {
+        setError("Failed to connect to the server. Please try again later.");
+      }
     } finally {
       setIsLoading(false);
     }

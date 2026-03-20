@@ -68,10 +68,10 @@ const startCleanupJob = () => {
     return;
   }
   
-  // Run immediately on startup (with delay to allow DB connection)
+  // Run after 1 hour on startup (allow DB to stabilize)
   setTimeout(() => {
     cleanupMessages();
-  }, 5000);
+  }, 60000); // 1 minute delay
   
   // Then run every 24 hours
   setInterval(cleanupMessages, 24 * 60 * 60 * 1000);

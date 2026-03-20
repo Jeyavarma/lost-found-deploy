@@ -30,7 +30,7 @@ html {
 }
         `}</style>
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <PresenceProvider>
           {children}
           <FloatingChat />
