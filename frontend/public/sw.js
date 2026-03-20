@@ -12,7 +12,13 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then((cache) => {
+        // Only cache assets that exist, skip failures
+        return Promise.allSettled(
+          STATIC_ASSETS.map(asset => cache.add(asset))
+        )
+      })
+      .catch(() => {}) // Silently fail if caching fails
   )
 })
 
@@ -20,40 +26,38 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
+  // Skip non-GET requests and external APIs
+  if (request.method !== 'GET') {
+    return
+  }
+
   // Cache API responses for 5 minutes
   if (url.pathname.startsWith('/api/items')) {
     event.respondWith(
       caches.open(API_CACHE).then(async (cache) => {
-        const cachedResponse = await cache.match(request)
-
-        if (cachedResponse) {
-          const cacheTime = new Date(cachedResponse.headers.get('date'))
-          const now = new Date()
-          const fiveMinutes = 5 * 60 * 1000
-
-          if (now - cacheTime < fiveMinutes) {
-            return cachedResponse
-          }
-        }
-
         try {
           const response = await fetch(request)
           if (response.ok) {
             cache.put(request, response.clone())
           }
           return response
-        } catch {
+        } catch (error) {
+          // Return cached response if fetch fails
+          const cachedResponse = await cache.match(request)
           return cachedResponse || new Response('Offline', { status: 503 })
         }
+      }).catch(() => {
+        // If cache fails, just fetch
+        return fetch(request).catch(() => new Response('Offline', { status: 503 }))
       })
     )
   }
-
   // Cache static assets
   else if (STATIC_ASSETS.includes(url.pathname)) {
     event.respondWith(
       caches.match(request)
         .then((response) => response || fetch(request))
+        .catch(() => new Response('Offline', { status: 503 }))
     )
   }
 })
