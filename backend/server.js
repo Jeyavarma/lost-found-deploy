@@ -129,7 +129,7 @@ app.use(cors({
       return callback(null, false);
     }
   },
-  credentials: false,
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   maxAge: 86400 // 24 hours preflight cache
