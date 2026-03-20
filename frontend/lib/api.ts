@@ -1,15 +1,24 @@
 import { BACKEND_URL } from './config'
 import { getAuthToken } from './auth'
+import { logger } from './logger'
 
 interface ApiOptions {
   method?: string
   body?: any
   headers?: Record<string, string>
   requireAuth?: boolean
+  retries?: number
+}
+
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // ms
+
+async function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export async function apiCall(endpoint: string, options: ApiOptions = {}) {
-  const { method = 'GET', body, headers = {}, requireAuth = true } = options
+  const { method = 'GET', body, headers = {}, requireAuth = true, retries = 0 } = options
 
   const config: RequestInit = {
     method,
@@ -67,7 +76,14 @@ export async function apiCall(endpoint: string, options: ApiOptions = {}) {
 
     return await response.text()
   } catch (error) {
-    console.error(`API call failed for ${endpoint}:`, error)
+    // Retry logic for network errors
+    if (retries < MAX_RETRIES && method === 'GET') {
+      logger.warn(`API call failed, retrying... (${retries + 1}/${MAX_RETRIES})`)
+      await delay(RETRY_DELAY * (retries + 1))
+      return apiCall(endpoint, { ...options, retries: retries + 1 })
+    }
+    
+    logger.error(`API call failed for ${endpoint}:`, error)
     throw error
   }
 }
