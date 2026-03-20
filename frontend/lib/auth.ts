@@ -1,3 +1,5 @@
+import { BACKEND_URL } from './config'
+
 export interface User {
   id: string
   name: string
@@ -7,8 +9,6 @@ export interface User {
 
 export const AUTH_TOKEN_KEY = process.env.NEXT_PUBLIC_AUTH_TOKEN_KEY || 'mcc_auth_token'
 export const USER_DATA_KEY = process.env.NEXT_PUBLIC_USER_DATA_KEY || 'mcc_user_data'
-
-import { BACKEND_URL } from './config'
 
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null

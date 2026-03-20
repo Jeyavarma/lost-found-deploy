@@ -92,7 +92,7 @@ function LoginPageContent() {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data) {
         try {
           // Store auth data using the auth utility
           setAuthToken(data.token);
